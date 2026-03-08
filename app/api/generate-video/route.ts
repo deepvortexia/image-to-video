@@ -89,7 +89,7 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify({
         input: {
           first_frame_image: imageUrl,
-          ...(motionPrompt?.trim() ? { prompt: motionPrompt.trim() } : {}),
+          prompt: motionPrompt?.trim() || 'Cinematic motion, smooth animation',
           duration: duration === 10 ? 10 : 6,
         },
       }),
