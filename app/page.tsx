@@ -1,65 +1,416 @@
-import Image from "next/image";
+'use client'
+import { useState, useEffect, useRef } from 'react'
+import Header from '../components/Header'
+import { AuthProvider, useAuth } from '../context/AuthContext'
+import { AuthModal } from '../components/AuthModal'
+import { PricingModal } from '../components/PricingModal'
+import { Notification } from '../components/Notification'
+import { useCredits } from '../hooks/useCredits'
+import { supabase } from '../lib/supabase'
+
+const COST_CREDITS = 2
+const CREDIT_REFRESH_ERROR = 'Payment successful, but there was a temporary issue syncing your credits. Please refresh the page to see your updated balance.'
+const PENDING_STRIPE_SESSION_KEY = 'pending_stripe_session'
+
+const cleanUrlParams = () => window.history.replaceState({}, '', window.location.pathname)
+
+function AppContent() {
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null)
+  const [uploadedImageUrl, setUploadedImageUrl] = useState('')
+  const [motionPrompt, setMotionPrompt] = useState('')
+  const [duration, setDuration] = useState<6 | 10>(6)
+  const [resultVideo, setResultVideo] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
+  const [isLoaded, setIsLoaded] = useState(false)
+  const [isDragging, setIsDragging] = useState(false)
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false)
+  const [isPricingModalOpen, setIsPricingModalOpen] = useState(false)
+  const [showNotification, setShowNotification] = useState(false)
+  const [toast, setToast] = useState<{ title: string; message: string; type: 'success' | 'error' | 'warning' } | null>(null)
+
+  const { user, session, loading } = useAuth()
+  const { hasEnoughCredits, refreshProfile } = useCredits()
+
+  const processedSessionIdRef = useRef<string | null>(null)
+  const processedPendingSessionRef = useRef(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => { setIsLoaded(true) }, [])
+
+  // Handle Stripe return
+  useEffect(() => {
+    const handleStripeReturn = async () => {
+      const params = new URLSearchParams(window.location.search)
+      const sessionId = params.get('session_id')
+      if (!sessionId) return
+      if (processedSessionIdRef.current === sessionId) return
+      if (loading) return
+      processedSessionIdRef.current = sessionId
+      if (user) {
+        try { await refreshProfile(); setShowNotification(true); cleanUrlParams() }
+        catch { setToast({ title: 'Credit Sync Issue', message: CREDIT_REFRESH_ERROR, type: 'warning' }) }
+      } else {
+        localStorage.setItem(PENDING_STRIPE_SESSION_KEY, sessionId)
+        cleanUrlParams()
+      }
+    }
+    handleStripeReturn()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, user])
+
+  useEffect(() => {
+    const processPending = async () => {
+      if (!user) { processedPendingSessionRef.current = false; return }
+      if (processedPendingSessionRef.current) return
+      const pendingSession = localStorage.getItem(PENDING_STRIPE_SESSION_KEY)
+      if (pendingSession) {
+        processedPendingSessionRef.current = true
+        try { await refreshProfile(); localStorage.removeItem(PENDING_STRIPE_SESSION_KEY); setShowNotification(true) }
+        catch { processedPendingSessionRef.current = false }
+      }
+    }
+    processPending()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user])
+
+  const handleFileSelect = (file: File) => {
+    if (!file.type.match(/^image\/(jpeg|png|webp)$/)) {
+      setToast({ title: 'Invalid File', message: 'Please upload a JPG, PNG, or WEBP image.', type: 'error' })
+      return
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setToast({ title: 'File Too Large', message: 'Maximum file size is 10MB.', type: 'error' })
+      return
+    }
+    setResultVideo('')
+    setUploadedFile(file)
+    if (uploadedImageUrl) URL.revokeObjectURL(uploadedImageUrl)
+    setUploadedImageUrl(URL.createObjectURL(file))
+  }
+
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) handleFileSelect(file)
+    e.target.value = ''
+  }
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragging(false)
+    const file = e.dataTransfer.files?.[0]
+    if (file) handleFileSelect(file)
+  }
+
+  const uploadInputImage = async (file: File, userId: string): Promise<string> => {
+    const ext = file.name.split('.').pop() || 'jpg'
+    const fileName = `${userId}/${Date.now()}-input.${ext}`
+    const { error } = await supabase.storage
+      .from('video-inputs')
+      .upload(fileName, file, { contentType: file.type, upsert: false })
+    if (error) throw new Error(`Upload failed: ${error.message}`)
+    const { data: { publicUrl } } = supabase.storage.from('video-inputs').getPublicUrl(fileName)
+    return publicUrl
+  }
+
+  const generateVideo = async () => {
+    if (!uploadedFile) {
+      setToast({ title: 'No Image', message: 'Please upload an image first.', type: 'warning' })
+      return
+    }
+    if (!user) {
+      setIsAuthModalOpen(true)
+      return
+    }
+    if (!hasEnoughCredits(COST_CREDITS)) {
+      setToast({ title: 'Insufficient Credits', message: `Video generation costs ${COST_CREDITS} credits. Please purchase more.`, type: 'warning' })
+      setIsPricingModalOpen(true)
+      return
+    }
+
+    setIsLoading(true)
+    setResultVideo('')
+    setToast(null)
+
+    try {
+      // Step 1: Upload image to Supabase Storage for a public URL
+      const imageUrl = await uploadInputImage(uploadedFile, user.id)
+
+      // Step 2: Generate video via API
+      const token = session?.access_token
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), 290_000)
+
+      let response: Response
+      try {
+        response = await fetch('/api/generate-video', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ imageUrl, motionPrompt, duration }),
+          signal: controller.signal,
+        })
+      } catch (fetchErr: unknown) {
+        clearTimeout(timeout)
+        if (fetchErr instanceof Error && fetchErr.name === 'AbortError') {
+          setToast({ title: 'Request Timed Out', message: 'Video generation took too long. No credits were deducted.', type: 'warning' })
+        } else {
+          setToast({ title: 'Network Error', message: 'Could not connect. Please check your connection.', type: 'error' })
+        }
+        return
+      }
+      clearTimeout(timeout)
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}))
+        switch (response.status) {
+          case 401:
+            setToast({ title: 'Session Expired', message: 'Please refresh and sign in again. No credits were deducted.', type: 'error' })
+            break
+          case 402:
+            setToast({ title: 'Insufficient Credits', message: "You don't have enough credits. Purchase more to continue.", type: 'warning' })
+            setIsPricingModalOpen(true)
+            break
+          case 429:
+            setToast({ title: 'Too Many Requests', message: 'Please wait before trying again. No credits were deducted.', type: 'warning' })
+            break
+          default:
+            setToast({ title: 'Generation Failed', message: (data.error || 'An unexpected error occurred') + '. No credits were deducted.', type: 'error' })
+        }
+        return
+      }
+
+      const data = await response.json()
+      setResultVideo(data.video)
+      await refreshProfile()
+    } catch (err: unknown) {
+      setToast({ title: 'Generation Failed', message: err instanceof Error ? err.message : 'An unexpected error occurred.', type: 'error' })
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const downloadVideo = async () => {
+    if (!resultVideo) return
+    const filename = `ai-video-${Date.now()}.mp4`
+    try {
+      const response = await fetch(resultVideo)
+      if (!response.ok) throw new Error(`HTTP ${response.status}`)
+      const blob = await response.blob()
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = filename
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+    } catch {
+      window.open(resultVideo, '_blank')
+    }
+  }
+
+  const resetAll = () => {
+    setResultVideo('')
+    setUploadedFile(null)
+    if (uploadedImageUrl) URL.revokeObjectURL(uploadedImageUrl)
+    setUploadedImageUrl('')
+    setMotionPrompt('')
+    setDuration(6)
+  }
+
+  return (
+    <div className={`app ${isLoaded ? 'fade-in' : ''}`}>
+      <Header />
+
+      <div className="app-container">
+        {[10, 20, 30, 40, 50, 60, 70, 80, 90].map((left, i) => (
+          <div key={i} className="particle" style={{ left: `${left}%`, animationDelay: `${i * 0.5}s` }} />
+        ))}
+      </div>
+
+      <div className="main-content">
+        <div className="prompt-section-wrapper">
+          <h3 className="prompt-section-title"><span className="title-icon">🖼️</span>Upload Your Image</h3>
+
+          <div
+            className={`upload-zone${isDragging ? ' upload-zone-dragging' : ''}${uploadedImageUrl ? ' upload-zone-has-image' : ''}`}
+            onClick={() => !uploadedImageUrl && fileInputRef.current?.click()}
+            onDragOver={(e) => { e.preventDefault(); setIsDragging(true) }}
+            onDragLeave={() => setIsDragging(false)}
+            onDrop={handleDrop}
+          >
+            {uploadedImageUrl ? (
+              <div className="upload-zone-preview">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={uploadedImageUrl} alt="Uploaded" className="upload-preview-img" />
+                <button className="upload-change-btn" onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click() }}>
+                  Change Image
+                </button>
+              </div>
+            ) : (
+              <div className="upload-zone-placeholder">
+                <span className="upload-icon">📁</span>
+                <p className="upload-text">Drop your image here or <span className="upload-link">browse</span></p>
+                <p className="upload-hint">JPG, PNG, WEBP · Max 10MB</p>
+              </div>
+            )}
+          </div>
+
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            onChange={handleFileInputChange}
+            style={{ display: 'none' }}
+          />
+
+          <div className="extra-inputs">
+            <div>
+              <label className="input-label">Motion Prompt <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>(optional)</span></label>
+              <textarea
+                className="motion-prompt-textarea"
+                placeholder="Describe the motion... e.g. 'gentle breeze blowing through hair, camera slowly zooming in'"
+                value={motionPrompt}
+                onChange={(e) => setMotionPrompt(e.target.value)}
+                maxLength={500}
+                rows={3}
+              />
+            </div>
+
+            <div>
+              <label className="input-label">Duration</label>
+              <div className="duration-selector">
+                <button
+                  className={`duration-pill${duration === 6 ? ' active' : ''}`}
+                  onClick={() => setDuration(6)}
+                >
+                  6 seconds
+                </button>
+                <button
+                  className={`duration-pill${duration === 10 ? ' active' : ''}`}
+                  onClick={() => setDuration(10)}
+                >
+                  10 seconds
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <button
+            className="generate-btn-enhanced"
+            onClick={generateVideo}
+            disabled={isLoading || !uploadedFile}
+          >
+            {isLoading ? (
+              <><span className="spinner" /><span className="btn-text">Generating Video...</span></>
+            ) : (
+              <><span className="btn-icon">🎬</span><span className="btn-text">Generate Video</span></>
+            )}
+          </button>
+          <p className="credit-note">2 credits per generation</p>
+        </div>
+
+        {isLoading && (
+          <div className="loading-section">
+            <div className="loading-spinner-large" />
+            <p className="loading-message">Generating your video... ✨</p>
+            <p className="loading-hint">This usually takes 20–60 seconds</p>
+          </div>
+        )}
+
+        {resultVideo && !isLoading && (
+          <div className="result-section slide-up">
+            <h2 className="result-title">Video Generated ✨</h2>
+            <div className="video-result-container">
+              <video
+                src={resultVideo}
+                className="result-video"
+                controls
+                autoPlay
+                loop
+                playsInline
+              />
+            </div>
+            <div className="action-buttons">
+              <button onClick={downloadVideo} className="action-btn download-btn">
+                <span>📥</span> Download MP4
+              </button>
+              <button onClick={resetAll} className="action-btn regenerate-btn">
+                <span>🔄</span> New Video
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <section className="ecosystem-section">
+        <h2 className="ecosystem-heading">Complete AI Ecosystem</h2>
+        <div className="ecosystem-grid">
+          {[
+            { name: 'Emoticons',    icon: '😃', desc: 'Custom emoji creation',         status: 'Available Now', isActive: true,  href: 'https://emoticons.deepvortexai.art', isCurrent: false },
+            { name: 'Image Gen',    icon: '🎨', desc: 'AI artwork',                     status: 'Available Now', isActive: true,  href: 'https://images.deepvortexai.art',    isCurrent: false },
+            { name: 'Remove BG',    icon: '✂️', desc: 'Remove backgrounds instantly',   status: 'Available Now', isActive: true,  href: 'https://bgremover.deepvortexai.art', isCurrent: false },
+            { name: 'Upscaler',     icon: '🔍', desc: 'Upscale images up to 4x',        status: 'Available Now', isActive: true,  href: 'https://upscaler.deepvortexai.art',  isCurrent: false },
+            { name: 'Image → Video',icon: '🎬', desc: 'Animate images with AI',         status: 'Available Now', isActive: true,  href: '#',                                  isCurrent: true  },
+            { name: 'Voice Gen',    icon: '🎙️', desc: 'AI Voice Generator',             status: 'Available Now', isActive: true,  href: 'https://voice.deepvortexai.art',     isCurrent: false },
+          ].map((tool, idx) => (
+            <div
+              key={idx}
+              className={`ecosystem-card ${tool.isActive ? 'eco-card-active' : 'eco-card-inactive'}${tool.isCurrent ? ' eco-glow' : ''}`}
+              onClick={() => { if (tool.isActive && !tool.isCurrent) window.location.href = tool.href }}
+              role={tool.isActive && !tool.isCurrent ? 'button' : 'presentation'}
+              style={{ cursor: tool.isActive && !tool.isCurrent ? 'pointer' : 'default' }}
+            >
+              <div className="eco-icon">{tool.icon}</div>
+              <h3 className="eco-title">{tool.name}</h3>
+              <p className="eco-desc">{tool.desc}</p>
+              <div className="eco-status-container">
+                <span className={`eco-status-badge ${tool.isActive ? 'eco-badge-active' : 'eco-badge-upcoming'}`}>
+                  {tool.status}
+                </span>
+                {tool.isCurrent && <div className="eco-current-label">CURRENT TOOL</div>}
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <footer className="footer">
+        <a href="https://deepvortexai.art" className="footer-tagline footer-tagline-link">
+          Deep Vortex AI - Building the complete AI creative ecosystem
+        </a>
+        <div className="footer-social">
+          <a href="https://www.tiktok.com/@deepvortexai" target="_blank" rel="noopener noreferrer" className="footer-social-link">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+              <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.2 8.2 0 004.79 1.53V6.77a4.85 4.85 0 01-1.02-.08z"/>
+            </svg>
+            TikTok
+          </a>
+          <a href="https://x.com/deepvortexart" target="_blank" rel="noopener noreferrer" className="footer-social-link">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+              <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.747l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+            </svg>
+            X
+          </a>
+          <a href="mailto:admin@deepvortexai.xyz" className="footer-contact-btn">Contact Us</a>
+        </div>
+      </footer>
+
+      <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />
+      <PricingModal isOpen={isPricingModalOpen} onClose={() => setIsPricingModalOpen(false)} />
+      {showNotification && (
+        <Notification title="Payment Successful!" message="Your credits have been added." onClose={() => setShowNotification(false)} />
+      )}
+      {toast && (
+        <Notification title={toast.title} message={toast.message} type={toast.type} onClose={() => setToast(null)} />
+      )}
+    </div>
+  )
+}
 
 export default function Home() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
-  );
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
+  )
 }
