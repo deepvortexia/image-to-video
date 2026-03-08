@@ -31,6 +31,9 @@ function AppContent() {
   const [favRefreshKey, setFavRefreshKey] = useState(0)
   const [favSaving, setFavSaving] = useState(false)
   const [favSaved, setFavSaved] = useState(false)
+  const [loadingStage, setLoadingStage] = useState<0 | 1 | 2 | 3>(0)
+  const [loadingProgress, setLoadingProgress] = useState(0)
+  const [elapsedSeconds, setElapsedSeconds] = useState(0)
 
   const { user, session, loading } = useAuth()
   const { hasEnoughCredits, refreshProfile } = useCredits()
@@ -38,6 +41,8 @@ function AppContent() {
   const processedSessionIdRef = useRef<string | null>(null)
   const processedPendingSessionRef = useRef(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const progressIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const elapsedIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => { setIsLoaded(true) }, [])
 
@@ -131,15 +136,36 @@ function AppContent() {
       return
     }
 
+    const clearIntervals = () => {
+      if (progressIntervalRef.current) { clearInterval(progressIntervalRef.current); progressIntervalRef.current = null }
+      if (elapsedIntervalRef.current) { clearInterval(elapsedIntervalRef.current); elapsedIntervalRef.current = null }
+    }
+
     setIsLoading(true)
     setResultVideo('')
     setToast(null)
+    setLoadingStage(1)
+    setLoadingProgress(0)
+    setElapsedSeconds(0)
+
+    // Elapsed timer — ticks every second
+    elapsedIntervalRef.current = setInterval(() => setElapsedSeconds(s => s + 1), 1000)
 
     try {
-      // Step 1: Upload image to Supabase Storage for a public URL
+      // Stage 1: Upload image (0 → 10%)
+      setLoadingProgress(4)
       const imageUrl = await uploadInputImage(uploadedFile, user.id)
+      setLoadingProgress(10)
 
-      // Step 2: Generate video via API
+      // Stage 2: AI animating (10 → 85%, asymptotic drift over ~60s)
+      setLoadingStage(2)
+      progressIntervalRef.current = setInterval(() => {
+        setLoadingProgress(prev => {
+          const gap = 85 - prev
+          return gap < 0.05 ? prev : prev + gap * 0.003
+        })
+      }, 100)
+
       const token = session?.access_token
       const controller = new AbortController()
       const timeout = setTimeout(() => controller.abort(), 290_000)
@@ -154,6 +180,7 @@ function AppContent() {
         })
       } catch (fetchErr: unknown) {
         clearTimeout(timeout)
+        clearIntervals()
         if (fetchErr instanceof Error && fetchErr.name === 'AbortError') {
           setToast({ title: 'Request Timed Out', message: 'Video generation took too long. No credits were deducted.', type: 'warning' })
         } else {
@@ -163,7 +190,11 @@ function AppContent() {
       }
       clearTimeout(timeout)
 
+      // Stop the slow drift now that the API responded
+      if (progressIntervalRef.current) { clearInterval(progressIntervalRef.current); progressIntervalRef.current = null }
+
       if (!response.ok) {
+        clearIntervals()
         const data = await response.json().catch(() => ({}))
         switch (response.status) {
           case 401:
@@ -182,6 +213,18 @@ function AppContent() {
         return
       }
 
+      // Stage 3: Finalizing (85 → 100%)
+      setLoadingStage(3)
+      setLoadingProgress(85)
+      await new Promise<void>(resolve => {
+        let p = 85
+        const finalize = setInterval(() => {
+          p += 3
+          setLoadingProgress(Math.min(p, 100))
+          if (p >= 100) { clearInterval(finalize); resolve() }
+        }, 40)
+      })
+
       const data = await response.json()
       setResultVideo(data.video)
       setFavSaved(false)
@@ -189,7 +232,10 @@ function AppContent() {
     } catch (err: unknown) {
       setToast({ title: 'Generation Failed', message: err instanceof Error ? err.message : 'An unexpected error occurred.', type: 'error' })
     } finally {
+      clearIntervals()
       setIsLoading(false)
+      setLoadingStage(0)
+      setLoadingProgress(0)
     }
   }
 
@@ -339,9 +385,34 @@ function AppContent() {
 
         {isLoading && (
           <div className="loading-section">
-            <div className="loading-spinner-large" />
-            <p className="loading-message">Generating your video... ✨</p>
-            <p className="loading-hint">This usually takes 20–60 seconds</p>
+            <div className="progress-stages">
+              <div className={`progress-stage${loadingStage === 1 ? ' stage-active' : loadingStage > 1 ? ' stage-done' : ''}`}>
+                <div className="stage-dot" />
+                <span>Uploading image...</span>
+              </div>
+              <div className={`progress-stage${loadingStage === 2 ? ' stage-active' : loadingStage > 2 ? ' stage-done' : ''}`}>
+                <div className="stage-dot" />
+                <span>AI is animating your image...</span>
+              </div>
+              <div className={`progress-stage${loadingStage === 3 ? ' stage-active' : ''}`}>
+                <div className="stage-dot" />
+                <span>Finalizing video...</span>
+              </div>
+            </div>
+
+            <div className="progress-bar-wrapper">
+              <div className="progress-bar-track">
+                <div className="progress-bar-fill" style={{ width: `${loadingProgress}%` }} />
+              </div>
+              {loadingProgress > 0 && (
+                <div className="progress-bar-tip" style={{ left: `${loadingProgress}%` }} />
+              )}
+            </div>
+
+            <div className="progress-footer">
+              <span className="progress-percent">{Math.round(loadingProgress)}%</span>
+              <span className="progress-elapsed">{elapsedSeconds}s...</span>
+            </div>
           </div>
         )}
 
