@@ -7,6 +7,7 @@ import { PricingModal } from '../components/PricingModal'
 import { Notification } from '../components/Notification'
 import { useCredits } from '../hooks/useCredits'
 import { supabase } from '../lib/supabase'
+import { VideoGallery } from '../components/VideoGallery'
 
 const COST_CREDITS = 2
 const CREDIT_REFRESH_ERROR = 'Payment successful, but there was a temporary issue syncing your credits. Please refresh the page to see your updated balance.'
@@ -27,6 +28,9 @@ function AppContent() {
   const [isPricingModalOpen, setIsPricingModalOpen] = useState(false)
   const [showNotification, setShowNotification] = useState(false)
   const [toast, setToast] = useState<{ title: string; message: string; type: 'success' | 'error' | 'warning' } | null>(null)
+  const [favRefreshKey, setFavRefreshKey] = useState(0)
+  const [favSaving, setFavSaving] = useState(false)
+  const [favSaved, setFavSaved] = useState(false)
 
   const { user, session, loading } = useAuth()
   const { hasEnoughCredits, refreshProfile } = useCredits()
@@ -180,6 +184,7 @@ function AppContent() {
 
       const data = await response.json()
       setResultVideo(data.video)
+      setFavSaved(false)
       await refreshProfile()
     } catch (err: unknown) {
       setToast({ title: 'Generation Failed', message: err instanceof Error ? err.message : 'An unexpected error occurred.', type: 'error' })
@@ -215,6 +220,29 @@ function AppContent() {
     setUploadedImageUrl('')
     setMotionPrompt('')
     setDuration(6)
+    setFavSaved(false)
+  }
+
+  const saveFavorite = async () => {
+    if (!resultVideo || !session?.access_token) return
+    setFavSaving(true)
+    try {
+      const res = await fetch('/api/favorites', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({ result_url: resultVideo }),
+      })
+      if (res.ok) {
+        setFavSaved(true)
+        setFavRefreshKey(k => k + 1)
+      } else {
+        setToast({ title: 'Save Failed', message: 'Could not save to favorites.', type: 'error' })
+      }
+    } catch {
+      setToast({ title: 'Save Failed', message: 'Could not save to favorites.', type: 'error' })
+    } finally {
+      setFavSaving(false)
+    }
   }
 
   return (
@@ -334,6 +362,16 @@ function AppContent() {
               <button onClick={downloadVideo} className="action-btn download-btn">
                 <span>📥</span> Download MP4
               </button>
+              {user && (
+                <button
+                  onClick={saveFavorite}
+                  className="action-btn"
+                  disabled={favSaving || favSaved}
+                  style={{ background: favSaved ? 'linear-gradient(135deg, #2a5c2a, #3a7c3a)' : undefined }}
+                >
+                  <span>{favSaved ? '✅' : '❤️'}</span> {favSaved ? 'Saved!' : favSaving ? 'Saving...' : 'Save to Favorites'}
+                </button>
+              )}
               <button onClick={resetAll} className="action-btn regenerate-btn">
                 <span>🔄</span> New Video
               </button>
@@ -341,6 +379,8 @@ function AppContent() {
           </div>
         )}
       </div>
+
+      <VideoGallery refreshKey={favRefreshKey} />
 
       <section className="ecosystem-section">
         <h2 className="ecosystem-heading">Complete AI Ecosystem</h2>

@@ -3,12 +3,14 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { AuthModal } from './AuthModal'
 import { PricingModal } from './PricingModal'
+import { VideoFavoritesModal } from './VideoFavoritesModal'
 import './Header.css'
 
 export default function Header() {
   const { user, profile, signOut, loading, refreshProfile } = useAuth()
   const [showAuthModal, setShowAuthModal] = useState(false)
   const [showPricingModal, setShowPricingModal] = useState(false)
+  const [showFavoritesModal, setShowFavoritesModal] = useState(false)
   const [loadingTimeout, setLoadingTimeout] = useState(false)
   const [showRetry, setShowRetry] = useState(false)
   const [isEmbedded, setIsEmbedded] = useState(false)
@@ -83,6 +85,13 @@ export default function Header() {
             <span className="pill-text">Buy Credits</span>
           </button>
 
+          {user && (
+            <button className="hub-pill buy-credits-pill" onClick={() => setShowFavoritesModal(true)} title="View saved videos">
+              <span className="pill-icon">⭐</span>
+              <span className="pill-text">Favorites</span>
+            </button>
+          )}
+
           {user ? (
             <div className="hub-pill profile-pill">
               {getAvatarUrl() ? (
@@ -114,6 +123,7 @@ export default function Header() {
 
       <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
       <PricingModal isOpen={showPricingModal} onClose={() => setShowPricingModal(false)} />
+      <VideoFavoritesModal isOpen={showFavoritesModal} onClose={() => setShowFavoritesModal(false)} />
     </>
   )
 }
