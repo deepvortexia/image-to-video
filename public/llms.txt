@@ -1,0 +1,107 @@
+# Deep Vortex AI Image to Video
+
+> Transform any image into an AI-generated video with motion — powered by Hailuo/MiniMax AI. Instant MP4 output.
+
+## URL
+
+https://video.deepvortexai.art
+
+## About
+
+The Deep Vortex AI Image to Video tool animates still images into short, dynamic AI-generated videos with realistic motion. Upload any photo or illustration, optionally describe the motion you want using a text prompt, and receive an MP4 video file in seconds. Powered by Hailuo/MiniMax AI — one of the most advanced image-to-video AI models available — the results are smooth, visually compelling, and suitable for social media, marketing, and creative projects.
+
+This tool opens up an entirely new creative dimension for content creators. A product photo becomes a cinematic product reveal. A landscape becomes a sweeping animated scene. A portrait subtly animates with lifelike movement. The optional motion prompt lets you guide the type of animation — zooming in, panning across a scene, adding weather effects, animating specific elements — giving you creative control without any video production skills.
+
+MP4 output is compatible with all major video platforms and editing tools. Credits are shared with your Deep Vortex AI account. New accounts get 2 free credits to try it immediately.
+
+## Features
+
+- Image-to-video animation powered by Hailuo/MiniMax AI
+- Optional motion prompt — describe the motion or animation style in text for guided results
+- MP4 output — universally compatible with all video platforms and editing software
+- Multiple motion styles to suit different creative goals
+- Instant processing — videos generated in seconds
+- One-click download of the generated video
+- Favorites system to save your best animated clips
+- Supports JPG, PNG, and WEBP input image formats
+- Mobile-friendly interface for generating on any device
+- Shared credit wallet integrated with all Deep Vortex AI tools
+
+## Use Cases
+
+- Animating product photos into short video clips for TikTok, Instagram Reels, and YouTube Shorts
+- Creating cinematic product reveal videos from static product imagery
+- Turning AI-generated images into motion content for social media feeds
+- Producing animated content for digital advertising and paid social campaigns
+- Adding motion to landscape and travel photography for immersive video posts
+- Creating animated hero videos for websites and landing pages from a single static image
+- Generating B-roll footage and animated visual backgrounds from reference photos
+- Producing animated thumbnails and preview clips for YouTube channels
+- Creating eye-catching motion posts from artwork, illustrations, and paintings
+- Generating dynamic story content for Instagram, Snapchat, and similar platforms
+
+## Target Audience
+
+- TikTok creators who want to turn photos into scroll-stopping short videos
+- Instagram and YouTube creators producing Reels and Shorts from still images
+- Social media managers running visual content campaigns that need video formats
+- Marketers and advertisers producing video assets without full video production budgets
+- Photographers who want to add motion and life to their still photography
+- Digital artists animating their illustrations and AI-generated artwork
+- Brand managers creating motion content for digital advertising and social campaigns
+- Content agencies producing video content at scale from image libraries
+- Animators and motion graphics artists using AI video as a creative starting point
+- E-commerce brands producing short video clips for product listings and ads
+
+## Pricing
+
+All credits are shared across every Deep Vortex AI tool. New accounts receive 2 free credits on sign-up — no payment required.
+
+- Starter: 10 credits — $4.99
+- Basic: 30 credits — $9.99
+- Popular: 75 credits — $19.99
+- Pro: 200 credits — $49.99
+- Ultimate: 500 credits — $99.99
+
+Credits do not expire. Use them on any tool in the Deep Vortex AI ecosystem at any time.
+
+## FAQ
+
+Q: What AI model powers the Image to Video tool?
+A: The tool is powered by Hailuo/MiniMax AI, one of the leading image-to-video AI models known for producing smooth, realistic motion with high visual fidelity. It is capable of interpreting both the visual content of an uploaded image and motion guidance from an optional text prompt.
+
+Q: What is a motion prompt and do I need to use one?
+A: A motion prompt is an optional text description of the animation or motion you want to see in the video — for example, "slow cinematic zoom in," "gentle breeze moving through trees," or "camera panning left across the scene." The motion prompt is entirely optional. If you leave it blank, the AI will automatically determine appropriate motion based on the content of your image.
+
+Q: What format is the generated video delivered in?
+A: All generated videos are delivered as MP4 files. MP4 is universally compatible with all video platforms (TikTok, Instagram, YouTube, Facebook), video editors (Premiere Pro, Final Cut, DaVinci Resolve, CapCut), and media players.
+
+Q: How long are the generated videos?
+A: The AI generates short video clips, typically a few seconds in length — ideal for social media content, ads, and short-form platforms like TikTok, Instagram Reels, and YouTube Shorts.
+
+Q: How much does one video generation cost?
+A: Each video generation costs 1 credit from your shared Deep Vortex AI wallet. Credits work across all tools in the ecosystem — image generation, background removal, upscaling, 3D modeling, voice synthesis, and more.
+
+Q: What types of images work best for video generation?
+A: Images with clear subjects, good lighting, and visual depth tend to animate most effectively. Landscapes, portraits, product photos, and illustrated scenes all produce strong results. Heavily cluttered or abstract images may produce less predictable motion, though results can still be creative and interesting.
+
+Q: Can I use the generated videos commercially?
+A: Yes. Videos generated with the Deep Vortex AI Image to Video tool are yours to use for both personal and commercial purposes, including social media content, advertising campaigns, and creative projects. Review the full terms of service at deepvortexai.art for complete licensing details.
+
+## All Deep Vortex AI Tools
+
+- Deep Vortex AI Hub: https://deepvortexai.art
+- AI Image Generator: https://images.deepvortexai.art
+- AI Emoticon Generator: https://emoticons.deepvortexai.art
+- AI Background Remover: https://bgremover.deepvortexai.art
+- AI Image Upscaler: https://upscaler.deepvortexai.art
+- AI 3D Model Generator: https://3d.deepvortexai.art
+- AI Voice Generator: https://voice.deepvortexai.art
+- AI Image to Video: https://video.deepvortexai.art
+
+## Contact
+
+- Email: admin@deepvortexai.xyz
+- TikTok: https://www.tiktok.com/@deepvortexai
+- X (Twitter): https://x.com/deepvortexart
+- Quora: https://deepvortexai.quora.com/

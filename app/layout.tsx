@@ -22,7 +22,7 @@ export const metadata: Metadata = {
   authors: [{ name: 'Deep Vortex AI' }],
   creator: 'Deep Vortex AI',
   publisher: 'Deep Vortex AI',
-  robots: 'index, follow',
+  robots: 'index, follow, max-image-preview:large',
   verification: {
     google: '76BAsq1e-Ol7tA8HmVLi9LgMDXpjyBIQvdAx6bZXF7Q',
   },
@@ -74,6 +74,8 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${orbitron.variable} ${inter.variable}`}>
       <head>
+        <link rel="llms" href="/llms.txt" type="text/plain" />
+        <meta name="revisit-after" content="3 days" />
         <link rel="dns-prefetch" href="https://api-inference.huggingface.co" />
         <script
           type="application/ld+json"
@@ -89,8 +91,8 @@ export default function RootLayout({
               offers: {
                 '@type': 'AggregateOffer',
                 priceCurrency: 'USD',
-                lowPrice: '0',
-                highPrice: '84.99',
+                lowPrice: '4.99',
+                highPrice: '99.99',
                 offerCount: '5',
               },
               creator: {
