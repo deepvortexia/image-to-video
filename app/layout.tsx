@@ -49,8 +49,9 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
-      { url: '/favicon.ico', sizes: 'any' },
+      { url: 'https://video.deepvortexai.art/favicon.ico?v=4', sizes: 'any' },
     ],
+    apple: 'https://video.deepvortexai.art/apple-touch-icon.png?v=4',
   },
   other: {
     'apple-mobile-web-app-capable': 'yes',
