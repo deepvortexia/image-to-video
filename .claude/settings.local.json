@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Users/Yan/deepvortex-repos/avatar-generator/**)",
+      "Bash(npm run:*)",
+      "Bash(cd:*)",
+      "Bash(for repo:*)",
+      "Bash(do)",
+      "Bash(echo \"=== $repo ===\")",
+      "Read(//c/Users/Yan/deepvortex-repos/**)",
+      "Bash(done)",
+      "Bash(git add:*)"
+    ]
+  }
+}
