@@ -9,7 +9,16 @@
       "Bash(echo \"=== $repo ===\")",
       "Read(//c/Users/Yan/deepvortex-repos/**)",
       "Bash(done)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Read(//c/Users/Yan/.local/share/com.vercel.cli/**)",
+      "Read(//c/Users/Yan/AppData/Roaming/com.vercel.cli/Data/**)",
+      "Bash(TOKEN=\"vca_3ohlB14hN9Iy1BN1hV4voW7MiJKADmHPHsZklKGkT0jjpdLjXd3YlvGt\"\nPROJECT=\"prj_24JKMNaTlilAPgCsBEucMAqEQAMz\"\ncurl -s \"https://api.vercel.com/v10/projects/$PROJECT/env\" \\\\\n  -H \"Authorization: Bearer $TOKEN\" | grep -o '\"key\":\"[^\"]*\"' | sort)",
+      "Bash(find:*)",
+      "Bash(vercel:*)",
+      "Read(//c/Users/Yan/.supabase/**)",
+      "Read(//c/Users/Yan/**)",
+      "Bash(python3:*)",
+      "Bash(node:*)"
     ]
   }
 }
