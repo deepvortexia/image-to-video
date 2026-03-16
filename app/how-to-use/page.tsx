@@ -1,4 +1,4 @@
-export const dynamic = "force-dynamic"
+'use client'
 
 const tools = [
   { name: 'AI Chat',       icon: '💬', desc: 'Intelligent AI conversations',    href: 'https://chat.deepvortexai.art' },
