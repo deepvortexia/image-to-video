@@ -18,7 +18,11 @@
       "Read(//c/Users/Yan/.supabase/**)",
       "Read(//c/Users/Yan/**)",
       "Bash(python3:*)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "Bash(f=\"C:/Users/Yan/AppData/Local/Temp/claude/C--Users-Yan-deepvortex-repos-image-to-video/daca270d-23ba-4bdd-9fa0-0e5fc9f8bdcc/tasks/b13cn6bbt.output\")",
+      "Read(//c/Users/Yan/deepvortex-repos/deepvortex-hub/**)",
+      "Bash(where gcloud:*)",
+      "Read(//c/Program Files/Google/Cloud SDK/google-cloud-sdk/bin/**)"
     ]
   }
 }
