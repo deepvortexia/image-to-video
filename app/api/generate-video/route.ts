@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
-export const maxDuration = 300 // 5 minutes for video generation
+export const maxDuration = 60 // Per-request max: POST creates prediction, GET downloads+uploads video
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL || '',
@@ -10,6 +10,7 @@ const supabase = createClient(
 
 const COST_CREDITS = 2
 
+// POST: deduct credits, create Replicate prediction, return {id} immediately
 export async function POST(request: NextRequest) {
   const { imageUrl, motionPrompt, duration } = await request.json()
 
@@ -76,10 +77,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Failed to verify credits' }, { status: 500 })
   }
 
-  let generationFailed = false
-
   try {
-    // Call Replicate wavespeedai/wan-2.1-i2v-480p
     const replicateRes = await fetch('https://api.replicate.com/v1/models/wan-video/wan-2.2-i2v-fast/predictions', {
       method: 'POST',
       headers: {
@@ -96,90 +94,113 @@ export async function POST(request: NextRequest) {
     })
 
     const prediction = await replicateRes.json()
-    console.log('[generate-video] Replicate response:', { status: replicateRes.status, predictionId: prediction.id })
+    console.log('[generate-video] Created prediction:', { status: replicateRes.status, id: prediction.id })
 
     if (!replicateRes.ok) {
-      generationFailed = true
+      // Refund credits — prediction never started
+      await supabase
+        .from('profiles')
+        .update({ credits: currentCredits, updated_at: new Date().toISOString() })
+        .eq('id', userId)
       throw new Error(prediction.detail || prediction.error || 'Failed to create prediction')
     }
 
-    // Poll every 3 seconds
-    let result = prediction
-    const pollStartTime = Date.now()
-    const TIMEOUT_MS = 270_000 // 4.5 min
-
-    while (result.status !== 'succeeded' && result.status !== 'failed') {
-      await new Promise(resolve => setTimeout(resolve, 3000))
-
-      if (Date.now() - pollStartTime > TIMEOUT_MS) {
-        generationFailed = true
-        throw new Error('Video generation timed out')
-      }
-
-      const pollRes = await fetch(`https://api.replicate.com/v1/predictions/${result.id}`, {
-        headers: { 'Authorization': `Token ${apiKey}` },
-      })
-
-      if (!pollRes.ok) {
-        generationFailed = true
-        throw new Error(`Failed to poll prediction: ${pollRes.status}`)
-      }
-
-      result = await pollRes.json()
-      console.log('[generate-video] Poll status:', result.status)
-    }
-
-    if (result.status === 'failed') {
-      generationFailed = true
-      throw new Error(result.error || 'Video generation failed')
-    }
-
-    const outputUrl = Array.isArray(result.output) ? result.output[0] : result.output
-    if (!outputUrl) {
-      generationFailed = true
-      throw new Error('No video returned from model')
-    }
-
-    // Download video and upload to Supabase Storage
-    const videoRes = await fetch(outputUrl)
-    if (!videoRes.ok) throw new Error(`Failed to fetch Replicate output: ${videoRes.status}`)
-    const videoBuffer = await videoRes.arrayBuffer()
-
-    const fileName = `${userId}/${Date.now()}-output.mp4`
-    const { error: uploadError } = await supabase.storage
-      .from('video-outputs')
-      .upload(fileName, videoBuffer, { contentType: 'video/mp4', upsert: false })
-
-    if (uploadError) throw new Error(`Storage upload failed: ${uploadError.message}`)
-
-    const { data: { publicUrl } } = supabase.storage.from('video-outputs').getPublicUrl(fileName)
-    if (!publicUrl) throw new Error('Failed to get public URL after upload')
-
-    console.log('[generate-video] Uploaded to Supabase Storage:', publicUrl)
-
-    // Log generation (fire-and-forget)
-    void supabase
-      .from('generation_logs')
-      .insert({ user_id: userId, tool: 'image-to-video', created_at: new Date().toISOString() })
-
-    return NextResponse.json({ video: publicUrl })
+    return NextResponse.json({ id: prediction.id })
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error'
-    console.error('[generate-video] Error:', message)
-    console.error('[generate-video] Full error:', JSON.stringify(error, Object.getOwnPropertyNames(error)))
+    console.error('[generate-video] POST error:', message)
+    return NextResponse.json({ error: message }, { status: 500 })
+  }
+}
 
-    if (generationFailed) {
-      try {
-        await supabase
-          .from('profiles')
-          .update({ credits: currentCredits, updated_at: new Date().toISOString() })
-          .eq('id', userId)
-        console.log(`[generate-video] Refunded ${COST_CREDITS} credits to user ${userId}`)
-      } catch (refundError) {
-        console.error('[generate-video] Failed to refund credits:', refundError)
-      }
+// GET ?id=: proxy Replicate status; on success upload video to storage; on failure refund credits
+export async function GET(request: NextRequest) {
+  const id = request.nextUrl.searchParams.get('id')
+  if (!id) {
+    return NextResponse.json({ error: 'Prediction ID is required' }, { status: 400 })
+  }
+
+  const authHeader = request.headers.get('authorization')
+  if (!authHeader) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const apiKey = process.env.REPLICATE_API_TOKEN
+  if (!apiKey) {
+    return NextResponse.json({ error: 'Replicate API key not configured' }, { status: 500 })
+  }
+
+  const token = authHeader.replace('Bearer ', '')
+  const { data: { user }, error: authError } = await supabase.auth.getUser(token)
+  if (authError || !user) {
+    return NextResponse.json({ error: 'Invalid authentication token' }, { status: 401 })
+  }
+
+  const pollRes = await fetch(`https://api.replicate.com/v1/predictions/${id}`, {
+    headers: { 'Authorization': `Token ${apiKey}` },
+  })
+
+  if (!pollRes.ok) {
+    return NextResponse.json({ error: `Replicate error: ${pollRes.status}` }, { status: 502 })
+  }
+
+  const result = await pollRes.json()
+  console.log('[generate-video] Poll status:', result.status, 'id:', id)
+
+  if (result.status === 'succeeded') {
+    const outputUrl = Array.isArray(result.output) ? result.output[0] : result.output
+    if (!outputUrl) {
+      return NextResponse.json({ error: 'No video output from model' }, { status: 500 })
     }
 
-    return NextResponse.json({ error: message || 'Failed to generate video' }, { status: 500 })
+    // Download from Replicate and upload to Supabase Storage
+    // Use prediction ID in filename for idempotency (safe to call multiple times)
+    const videoRes = await fetch(outputUrl)
+    if (!videoRes.ok) {
+      return NextResponse.json({ error: `Failed to fetch video: ${videoRes.status}` }, { status: 502 })
+    }
+    const videoBuffer = await videoRes.arrayBuffer()
+    const fileName = `${user.id}/${id}-output.mp4`
+
+    const { error: uploadError } = await supabase.storage
+      .from('video-outputs')
+      .upload(fileName, videoBuffer, { contentType: 'video/mp4', upsert: true })
+
+    if (uploadError) {
+      return NextResponse.json({ error: `Storage upload failed: ${uploadError.message}` }, { status: 500 })
+    }
+
+    const { data: { publicUrl } } = supabase.storage.from('video-outputs').getPublicUrl(fileName)
+    console.log('[generate-video] Uploaded to Supabase Storage:', publicUrl)
+
+    void supabase
+      .from('generation_logs')
+      .insert({ user_id: user.id, tool: 'image-to-video', created_at: new Date().toISOString() })
+
+    return NextResponse.json({ status: 'succeeded', video: publicUrl })
   }
+
+  if (result.status === 'failed') {
+    // Refund credits
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('credits')
+        .eq('id', user.id)
+        .single()
+      if (profile) {
+        await supabase
+          .from('profiles')
+          .update({ credits: profile.credits + COST_CREDITS, updated_at: new Date().toISOString() })
+          .eq('id', user.id)
+        console.log(`[generate-video] Refunded ${COST_CREDITS} credits to user ${user.id}`)
+      }
+    } catch (refundError) {
+      console.error('[generate-video] Failed to refund credits:', refundError)
+    }
+    return NextResponse.json({ status: 'failed', error: result.error || 'Video generation failed' })
+  }
+
+  // 'starting' | 'processing' | 'canceled'
+  return NextResponse.json({ status: result.status })
 }

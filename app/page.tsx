@@ -157,46 +157,21 @@ function AppContent() {
       const imageUrl = await uploadInputImage(uploadedFile, user.id)
       setLoadingProgress(10)
 
-      // Stage 2: AI animating (10 → 85%, asymptotic drift over ~60s)
+        // Stage 2: Submit job to API
       setLoadingStage(2)
-      progressIntervalRef.current = setInterval(() => {
-        setLoadingProgress(prev => {
-          const gap = 85 - prev
-          return gap < 0.05 ? prev : prev + gap * 0.003
-        })
-      }, 100)
 
       const token = session?.access_token
-      const controller = new AbortController()
-      const timeout = setTimeout(() => controller.abort(), 290_000)
 
-      let response: Response
-      try {
-        response = await fetch('/api/generate-video', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-          body: JSON.stringify({ imageUrl, motionPrompt, duration }),
-          signal: controller.signal,
-        })
-      } catch (fetchErr: unknown) {
-        clearTimeout(timeout)
+      const postRes = await fetch('/api/generate-video', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ imageUrl, motionPrompt, duration }),
+      })
+
+      if (!postRes.ok) {
         clearIntervals()
-        if (fetchErr instanceof Error && fetchErr.name === 'AbortError') {
-          setToast({ title: 'Request Timed Out', message: 'Video generation took too long. No credits were deducted.', type: 'warning' })
-        } else {
-          setToast({ title: 'Network Error', message: 'Could not connect. Please check your connection.', type: 'error' })
-        }
-        return
-      }
-      clearTimeout(timeout)
-
-      // Stop the slow drift now that the API responded
-      if (progressIntervalRef.current) { clearInterval(progressIntervalRef.current); progressIntervalRef.current = null }
-
-      if (!response.ok) {
-        clearIntervals()
-        const data = await response.json().catch(() => ({}))
-        switch (response.status) {
+        const data = await postRes.json().catch(() => ({}))
+        switch (postRes.status) {
           case 401:
             setToast({ title: 'Session Expired', message: 'Please refresh and sign in again. No credits were deducted.', type: 'error' })
             break
@@ -213,6 +188,49 @@ function AppContent() {
         return
       }
 
+      const { id } = await postRes.json()
+
+      // Asymptotic progress drift while polling (10 → 85%)
+      progressIntervalRef.current = setInterval(() => {
+        setLoadingProgress(prev => {
+          const gap = 85 - prev
+          return gap < 0.05 ? prev : prev + gap * 0.003
+        })
+      }, 100)
+
+      // Poll GET /api/generate-video?id= every 3 seconds
+      const pollStart = Date.now()
+      let videoUrl = ''
+      while (true) {
+        await new Promise(resolve => setTimeout(resolve, 3000))
+
+        if (Date.now() - pollStart > 270_000) {
+          throw new Error('Video generation timed out after 4.5 minutes')
+        }
+
+        const pollRes = await fetch(`/api/generate-video?id=${encodeURIComponent(id)}`, {
+          headers: { 'Authorization': `Bearer ${token}` },
+        })
+
+        if (!pollRes.ok) {
+          const data = await pollRes.json().catch(() => ({}))
+          throw new Error(data.error || `Polling failed (${pollRes.status})`)
+        }
+
+        const pollData = await pollRes.json()
+
+        if (pollData.status === 'succeeded') {
+          videoUrl = pollData.video
+          break
+        }
+        if (pollData.status === 'failed') {
+          throw new Error(pollData.error || 'Video generation failed')
+        }
+        // 'starting' | 'processing' — keep polling
+      }
+
+      if (progressIntervalRef.current) { clearInterval(progressIntervalRef.current); progressIntervalRef.current = null }
+
       // Stage 3: Finalizing (85 → 100%)
       setLoadingStage(3)
       setLoadingProgress(85)
@@ -225,8 +243,7 @@ function AppContent() {
         }, 40)
       })
 
-      const data = await response.json()
-      setResultVideo(data.video)
+      setResultVideo(videoUrl)
       setFavSaved(false)
       await refreshProfile()
     } catch (err: unknown) {
@@ -457,15 +474,15 @@ function AppContent() {
         <h2 className="ecosystem-heading">Complete AI Ecosystem</h2>
         <div className="ecosystem-grid">
           {[
-            { name: 'Emoticons',     icon: '😃', desc: 'Custom emoji creation',         status: 'Available Now', isActive: true,  href: 'https://emoticons.deepvortexai.art',  isCurrent: false },
-            { name: 'Image Gen',     icon: '🎨', desc: 'AI artwork',                    status: 'Available Now', isActive: true,  href: 'https://images.deepvortexai.art',     isCurrent: false },
-            { name: 'Logo Gen',      icon: '🛡️', desc: 'AI logo creation',             status: 'Available Now', isActive: true,  href: 'https://logo.deepvortexai.art',       isCurrent: false },
-            { name: 'Avatar Gen',    icon: '🎭', desc: 'AI portrait styles',            status: 'Available Now', isActive: true,  href: 'https://avatar.deepvortexai.art',     isCurrent: false },
-            { name: 'Remove BG',     icon: '✂️', desc: 'Remove backgrounds instantly',  status: 'Available Now', isActive: true,  href: 'https://bgremover.deepvortexai.art',  isCurrent: false },
-            { name: 'Upscaler',      icon: '🔍', desc: 'Upscale images up to 4x',       status: 'Available Now', isActive: true,  href: 'https://upscaler.deepvortexai.art',   isCurrent: false },
-            { name: '3D Generator',  icon: '🧊', desc: 'Image to 3D model',             status: 'Available Now', isActive: true,  href: 'https://3d.deepvortexai.art',         isCurrent: false },
-            { name: 'Image → Video', icon: '🎬', desc: 'Animate images with AI',        status: 'Available Now', isActive: true,  href: 'https://video.deepvortexai.art',      isCurrent: true  },
-            { name: 'Voice Gen',     icon: '🎙️', desc: 'AI Voice Generator',            status: 'Available Now', isActive: true,  href: 'https://voice.deepvortexai.art',      isCurrent: false },
+            { name: 'Emoticons',     icon: '😃', desc: 'Custom emoji creation',         status: 'Available Now', isActive: true,  href: 'https://emoticons.deepvortexai.com',  isCurrent: false },
+            { name: 'Image Gen',     icon: '🎨', desc: 'AI artwork',                    status: 'Available Now', isActive: true,  href: 'https://images.deepvortexai.com',     isCurrent: false },
+            { name: 'Logo Gen',      icon: '🛡️', desc: 'AI logo creation',             status: 'Available Now', isActive: true,  href: 'https://logo.deepvortexai.com',       isCurrent: false },
+            { name: 'Avatar Gen',    icon: '🎭', desc: 'AI portrait styles',            status: 'Available Now', isActive: true,  href: 'https://avatar.deepvortexai.com',     isCurrent: false },
+            { name: 'Remove BG',     icon: '✂️', desc: 'Remove backgrounds instantly',  status: 'Available Now', isActive: true,  href: 'https://bgremover.deepvortexai.com',  isCurrent: false },
+            { name: 'Upscaler',      icon: '🔍', desc: 'Upscale images up to 4x',       status: 'Available Now', isActive: true,  href: 'https://upscaler.deepvortexai.com',   isCurrent: false },
+            { name: '3D Generator',  icon: '🧊', desc: 'Image to 3D model',             status: 'Available Now', isActive: true,  href: 'https://3d.deepvortexai.com',         isCurrent: false },
+            { name: 'Image → Video', icon: '🎬', desc: 'Animate images with AI',        status: 'Available Now', isActive: true,  href: 'https://video.deepvortexai.com',      isCurrent: true  },
+            { name: 'Voice Gen',     icon: '🎙️', desc: 'AI Voice Generator',            status: 'Available Now', isActive: true,  href: 'https://voice.deepvortexai.com',      isCurrent: false },
           ].map((tool, idx) => (
             <div
               key={idx}
@@ -489,7 +506,7 @@ function AppContent() {
       </section>
 
       <footer className="footer">
-        <a href="https://deepvortexai.art" className="footer-tagline footer-tagline-link">
+        <a href="https://deepvortexai.com" className="footer-tagline footer-tagline-link">
           Deep Vortex AI - Building the complete AI creative ecosystem
         </a>
         <div className="footer-social">
@@ -527,7 +544,7 @@ export default function Home() {
       <AuthProvider>
         <AppContent />
       </AuthProvider>
-      <a href="https://deepvortexai.art/game" target="_blank" rel="noopener noreferrer" className="play-earn-fab">⚡ Play & Earn</a>
+      <a href="https://deepvortexai.com/game" target="_blank" rel="noopener noreferrer" className="play-earn-fab">⚡ Play & Earn</a>
     </>
   )
 }
