@@ -139,7 +139,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [loadProfile])
 
   const saveReturnOrigin = () => {
-    document.cookie = `deepvortex-return-origin=${encodeURIComponent(window.location.origin)}; domain=.deepvortexai.art; path=/; max-age=300; secure; samesite=lax`
+    document.cookie = `deepvortex-return-origin=${encodeURIComponent(window.location.origin)}; domain=.deepvortexai.com; path=/; max-age=300; secure; samesite=lax`
   }
 
   const signInWithGoogle = async () => {
