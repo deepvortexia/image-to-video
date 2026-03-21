@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
 
   try {
     // Call Replicate wavespeedai/wan-2.1-i2v-480p
-    const replicateRes = await fetch('https://api.replicate.com/v1/models/wavespeedai/wan-2.1-i2v-480p/predictions', {
+    const replicateRes = await fetch('https://api.replicate.com/v1/models/wan-video/wan-2.2-i2v-fast/predictions', {
       method: 'POST',
       headers: {
         'Authorization': `Token ${apiKey}`,
