@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
       }, { status: 401 })
     }
 
-    const origin = request.headers.get('origin') || 'https://video.deepvortexai.art'
+    const origin = request.headers.get('origin') || 'https://video.deepvortexai.com'
 
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],

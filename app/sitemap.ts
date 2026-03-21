@@ -3,7 +3,7 @@ import { MetadataRoute } from 'next'
 export default function sitemap(): MetadataRoute.Sitemap {
   return [
     {
-      url: 'https://video.deepvortexai.art',
+      url: 'https://video.deepvortexai.com',
       lastModified: new Date(),
       changeFrequency: 'weekly',
       priority: 1,

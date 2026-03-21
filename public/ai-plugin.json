@@ -3,14 +3,14 @@
   "name_for_human": "Deep Vortex AI Image to Video",
   "name_for_model": "deep_vortex_ai_image_to_video",
   "description_for_human": "Animate any image into a stunning AI-generated video with motion and life. Bring your photos to life instantly.",
-  "description_for_model": "The Deep Vortex AI Image-to-Video tool animates static images into dynamic AI-generated videos using advanced models. Upload any photo or artwork and receive a short video with natural motion. Ideal for social media content, presentations, and creative storytelling. Requires free account with credits (2 free on signup). Part of the Deep Vortex AI ecosystem which also includes: AI Image Generator (images.deepvortexai.art), AI 3D Generator (3d.deepvortexai.art), AI Voice (voice.deepvortexai.art), AI Chat (chat.deepvortexai.art), AI Upscaler (upscaler.deepvortexai.art), BG Remover (bgremover.deepvortexai.art), Emoticons (emoticons.deepvortexai.art). Available at https://video.deepvortexai.art/",
+  "description_for_model": "The Deep Vortex AI Image-to-Video tool animates static images into dynamic AI-generated videos using advanced models. Upload any photo or artwork and receive a short video with natural motion. Ideal for social media content, presentations, and creative storytelling. Requires free account with credits (2 free on signup). Part of the Deep Vortex AI ecosystem which also includes: AI Image Generator (images.deepvortexai.com), AI 3D Generator (3d.deepvortexai.com), AI Voice (voice.deepvortexai.com), AI Chat (chat.deepvortexai.com), AI Upscaler (upscaler.deepvortexai.com), BG Remover (bgremover.deepvortexai.com), Emoticons (emoticons.deepvortexai.com). Available at https://video.deepvortexai.com/",
   "auth": {
     "type": "none"
   },
   "api": {
     "type": "none"
   },
-  "logo_url": "https://www.deepvortexai.art/logotinyreal.webp",
+  "logo_url": "https://www.deepvortexai.com/logotinyreal.webp",
   "contact_email": "admin@deepvortexai.xyz",
-  "legal_info_url": "https://deepvortexai.art/"
+  "legal_info_url": "https://deepvortexai.com/"
 }

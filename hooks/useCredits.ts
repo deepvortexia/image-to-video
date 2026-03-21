@@ -17,7 +17,7 @@ export const useCredits = () => {
     try {
       await refreshProfile()
       if (window.parent !== window) {
-        window.parent.postMessage({ type: 'deepvortex-credits-updated' }, 'https://deepvortexai.art')
+        window.parent.postMessage({ type: 'deepvortex-credits-updated' }, 'https://deepvortexai.com')
       }
       return true
     } catch (error) {

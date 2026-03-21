@@ -26,18 +26,18 @@ export const metadata: Metadata = {
   verification: {
     google: '76BAsq1e-Ol7tA8HmVLi9LgMDXpjyBIQvdAx6bZXF7Q',
   },
-  metadataBase: new URL('https://video.deepvortexai.art'),
+  metadataBase: new URL('https://video.deepvortexai.com'),
   alternates: {
-    canonical: 'https://video.deepvortexai.art',
+    canonical: 'https://video.deepvortexai.com',
   },
   openGraph: {
     type: 'website',
-    url: 'https://video.deepvortexai.art',
+    url: 'https://video.deepvortexai.com',
     title: 'AI Image to Video — Deep Vortex AI',
     description: 'Transform any image into a stunning AI-generated video with motion and life. Animate your photos instantly.',
     siteName: 'Deep Vortex AI',
     locale: 'en_US',
-    images: [{ url: 'https://video.deepvortexai.art/deepgoldremoveetiny.png', width: 512, height: 512, alt: 'Deep Vortex AI Image to Video' }],
+    images: [{ url: 'https://video.deepvortexai.com/deepgoldremoveetiny.png', width: 512, height: 512, alt: 'Deep Vortex AI Image to Video' }],
   },
   twitter: {
     card: 'summary_large_image',
@@ -45,13 +45,13 @@ export const metadata: Metadata = {
     creator: '@deepvortexart',
     title: 'AI Image to Video — Deep Vortex AI',
     description: 'Transform any image into a stunning AI-generated video with motion and life.',
-    images: ['https://video.deepvortexai.art/deepgoldremoveetiny.png'],
+    images: ['https://video.deepvortexai.com/deepgoldremoveetiny.png'],
   },
   icons: {
     icon: [
-      { url: 'https://video.deepvortexai.art/favicon.ico?v=4', sizes: 'any' },
+      { url: 'https://video.deepvortexai.com/favicon.ico?v=4', sizes: 'any' },
     ],
-    apple: 'https://video.deepvortexai.art/apple-touch-icon.png?v=4',
+    apple: 'https://video.deepvortexai.com/apple-touch-icon.png?v=4',
   },
   other: {
     'apple-mobile-web-app-capable': 'yes',
@@ -86,7 +86,7 @@ export default function RootLayout({
               '@type': 'WebApplication',
               name: 'Deep Vortex AI Image to Video',
               description: 'Transform any image into a stunning AI-generated video with motion and life.',
-              url: 'https://video.deepvortexai.art',
+              url: 'https://video.deepvortexai.com',
               applicationCategory: 'MultimediaApplication',
               operatingSystem: 'All',
               offers: {
@@ -99,7 +99,7 @@ export default function RootLayout({
               creator: {
                 '@type': 'Organization',
                 name: 'Deep Vortex AI',
-                url: 'https://deepvortexai.art',
+                url: 'https://deepvortexai.com',
                 sameAs: [
                   'https://www.tiktok.com/@deepvortexai',
                   'https://x.com/deepvortexart',

@@ -1,14 +1,14 @@
 'use client'
 
 const tools = [
-  { name: 'AI Chat',       icon: '💬', desc: 'Intelligent AI conversations',    href: 'https://chat.deepvortexai.art' },
-  { name: 'Emoticons',     icon: '😃', desc: 'Custom emoji creation',            href: 'https://emoticons.deepvortexai.art' },
-  { name: 'Image Gen',     icon: '🎨', desc: 'AI artwork & image generation',    href: 'https://images.deepvortexai.art' },
-  { name: 'Remove BG',     icon: '✂️', desc: 'Remove backgrounds instantly',     href: 'https://bgremover.deepvortexai.art' },
-  { name: 'Upscaler',      icon: '🔍', desc: 'Upscale images up to 4x',          href: 'https://upscaler.deepvortexai.art' },
-  { name: '3D Generator',  icon: '🧊', desc: 'Convert images to 3D models',      href: 'https://3d.deepvortexai.art' },
-  { name: 'Voice Gen',     icon: '🎙️', desc: 'AI voice generation',              href: 'https://voice.deepvortexai.art' },
-  { name: 'Deep Vortex Hub', icon: '🌀', desc: 'Explore the full AI ecosystem', href: 'https://deepvortexai.art' },
+  { name: 'AI Chat',       icon: '💬', desc: 'Intelligent AI conversations',    href: 'https://chat.deepvortexai.com' },
+  { name: 'Emoticons',     icon: '😃', desc: 'Custom emoji creation',            href: 'https://emoticons.deepvortexai.com' },
+  { name: 'Image Gen',     icon: '🎨', desc: 'AI artwork & image generation',    href: 'https://images.deepvortexai.com' },
+  { name: 'Remove BG',     icon: '✂️', desc: 'Remove backgrounds instantly',     href: 'https://bgremover.deepvortexai.com' },
+  { name: 'Upscaler',      icon: '🔍', desc: 'Upscale images up to 4x',          href: 'https://upscaler.deepvortexai.com' },
+  { name: '3D Generator',  icon: '🧊', desc: 'Convert images to 3D models',      href: 'https://3d.deepvortexai.com' },
+  { name: 'Voice Gen',     icon: '🎙️', desc: 'AI voice generation',              href: 'https://voice.deepvortexai.com' },
+  { name: 'Deep Vortex Hub', icon: '🌀', desc: 'Explore the full AI ecosystem', href: 'https://deepvortexai.com' },
 ]
 
 const steps = [
