@@ -13,12 +13,12 @@ const getCookie = (name: string): string | null => {
 
 const setCookieRaw = (name: string, value: string, maxAge: number = 31536000) => {
   if (typeof document === 'undefined') return
-  document.cookie = `${name}=${encodeURIComponent(value)}; domain=.deepvortexai.art; path=/; max-age=${maxAge}; secure; samesite=lax`
+  document.cookie = `${name}=${encodeURIComponent(value)}; domain=.deepvortexai.com; path=/; max-age=${maxAge}; secure; samesite=lax`
 }
 
 const removeCookieRaw = (name: string) => {
   if (typeof document === 'undefined') return
-  document.cookie = `${name}=; domain=.deepvortexai.art; path=/; max-age=0; secure; samesite=lax`
+  document.cookie = `${name}=; domain=.deepvortexai.com; path=/; max-age=0; secure; samesite=lax`
 }
 
 const getChunkedCookie = (key: string): string | null => {
