@@ -79,8 +79,8 @@ export async function POST(request: NextRequest) {
   let generationFailed = false
 
   try {
-    // Call Replicate minimax/hailuo-02-fast
-    const replicateRes = await fetch('https://api.replicate.com/v1/models/minimax/hailuo-02-fast/predictions', {
+    // Call Replicate wavespeedai/wan-2.1-i2v-480p
+    const replicateRes = await fetch('https://api.replicate.com/v1/models/wavespeedai/wan-2.1-i2v-480p/predictions', {
       method: 'POST',
       headers: {
         'Authorization': `Token ${apiKey}`,
@@ -88,9 +88,9 @@ export async function POST(request: NextRequest) {
       },
       body: JSON.stringify({
         input: {
-          first_frame_image: imageUrl,
+          image: imageUrl,
           prompt: motionPrompt?.trim() || 'Cinematic motion, smooth animation',
-          duration: duration === 10 ? 10 : 6,
+          duration: duration === 10 ? 10 : 5,
         },
       }),
     })
