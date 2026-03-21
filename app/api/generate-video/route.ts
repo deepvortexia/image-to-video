@@ -166,6 +166,7 @@ export async function POST(request: NextRequest) {
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error'
     console.error('[generate-video] Error:', message)
+    console.error('[generate-video] Full error:', JSON.stringify(error, Object.getOwnPropertyNames(error)))
 
     if (generationFailed) {
       try {
