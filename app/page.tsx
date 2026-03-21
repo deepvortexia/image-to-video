@@ -19,7 +19,6 @@ function AppContent() {
   const [uploadedFile, setUploadedFile] = useState<File | null>(null)
   const [uploadedImageUrl, setUploadedImageUrl] = useState('')
   const [motionPrompt, setMotionPrompt] = useState('')
-  const [duration, setDuration] = useState<6 | 10>(6)
   const [resultVideo, setResultVideo] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [isLoaded, setIsLoaded] = useState(false)
@@ -165,7 +164,7 @@ function AppContent() {
       const postRes = await fetch('/api/generate-video', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ imageUrl, motionPrompt, duration }),
+        body: JSON.stringify({ imageUrl, motionPrompt }),
       })
 
       if (!postRes.ok) {
@@ -282,7 +281,6 @@ function AppContent() {
     if (uploadedImageUrl) URL.revokeObjectURL(uploadedImageUrl)
     setUploadedImageUrl('')
     setMotionPrompt('')
-    setDuration(6)
     setFavSaved(false)
   }
 
@@ -367,24 +365,7 @@ function AppContent() {
               />
             </div>
 
-            <div>
-              <label className="input-label">Duration</label>
-              <div className="duration-selector">
-                <button
-                  className={`duration-pill${duration === 6 ? ' active' : ''}`}
-                  onClick={() => setDuration(6)}
-                >
-                  6 seconds
-                </button>
-                <button
-                  className={`duration-pill${duration === 10 ? ' active' : ''}`}
-                  onClick={() => setDuration(10)}
-                >
-                  10 seconds
-                </button>
-              </div>
             </div>
-          </div>
 
           <button
             className="generate-btn-enhanced"
