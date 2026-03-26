@@ -33,7 +33,6 @@ export const metadata: Metadata = {
   openGraph: {
     type: 'website',
     url: 'https://video.deepvortexai.com',
-              images: 'https://video.deepvortexai.com/deepgoldremoveetiny.png',
     title: 'AI Image to Video — Deep Vortex AI',
     description: 'Transform any image into a stunning AI-generated video with motion and life. Animate your photos instantly.',
     siteName: 'Deep Vortex AI',
