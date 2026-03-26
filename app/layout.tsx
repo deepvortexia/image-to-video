@@ -33,7 +33,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: 'website',
     url: 'https://video.deepvortexai.com',
-              image: 'https://video.deepvortexai.com/deepgoldremoveetiny.png',
+              images: 'https://video.deepvortexai.com/deepgoldremoveetiny.png',
     title: 'AI Image to Video — Deep Vortex AI',
     description: 'Transform any image into a stunning AI-generated video with motion and life. Animate your photos instantly.',
     siteName: 'Deep Vortex AI',
@@ -94,7 +94,7 @@ export default function RootLayout({
               name: 'Deep Vortex AI Image to Video',
               description: 'Transform any image into a stunning AI-generated video with motion and life.',
               url: 'https://video.deepvortexai.com',
-              image: 'https://video.deepvortexai.com/deepgoldremoveetiny.png',
+              images: 'https://video.deepvortexai.com/deepgoldremoveetiny.png',
               applicationCategory: 'MultimediaApplication',
               operatingSystem: 'All',
               offers: {
