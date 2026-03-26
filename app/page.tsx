@@ -454,7 +454,7 @@ function AppContent() {
       <section className="ecosystem-section">
         <h2 className="ecosystem-heading">Complete AI Ecosystem</h2>
         <div className="ecosystem-grid">
-          {[
+          {[ // ecosystem updated
             { name: 'Image Editor',  icon: '✏️', desc: 'Edit any image with AI',        status: 'Available Now', isActive: true,  href: 'https://image-editor.deepvortexai.com', isCurrent: false },
             { name: 'Emoticons',     icon: '😃', desc: 'Custom emoji creation',         status: 'Available Now', isActive: true,  href: 'https://emoticons.deepvortexai.com',  isCurrent: false },
             { name: 'Image Gen',     icon: '🎨', desc: 'AI artwork',                    status: 'Available Now', isActive: true,  href: 'https://images.deepvortexai.com',     isCurrent: false },
