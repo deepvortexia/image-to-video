@@ -16,9 +16,9 @@ const inter = Inter({
 })
 
 export const metadata: Metadata = {
-  title: 'AI Image to Video — Deep Vortex AI',
-  description: 'Transform any image into a stunning AI-generated video with motion and life. Animate your photos and artwork instantly. Part of the Deep Vortex AI creative ecosystem.',
-  keywords: ['image to video', 'AI video generator', 'animate image', 'AI animation', 'photo to video', 'Deep Vortex AI', 'hailuo', 'minimax', 'AI creative tools'],
+  title: 'AI Image to Video Free Online — Animate Photos Instantly No Signup | Deep Vortex AI',
+  description: 'Transform any image into a stunning AI video with motion and life. Animate photos and artwork instantly. Free online tool, no signup required. Part of Deep Vortex AI.',
+  keywords: ['AI image to video free online', 'animate image AI free', 'photo to video AI no signup', 'AI video generator free', 'animate photo free online', 'image animation AI free', 'Deep Vortex AI image to video', 'free AI video maker from image'],
   authors: [{ name: 'Deep Vortex AI' }],
   creator: 'Deep Vortex AI',
   publisher: 'Deep Vortex AI',
@@ -33,8 +33,8 @@ export const metadata: Metadata = {
   openGraph: {
     type: 'website',
     url: 'https://video.deepvortexai.com',
-    title: 'AI Image to Video — Deep Vortex AI',
-    description: 'Transform any image into a stunning AI-generated video with motion and life. Animate your photos instantly.',
+    title: 'AI Image to Video Free Online — Animate Photos Instantly No Signup | Deep Vortex AI',
+    description: 'Transform any image into a stunning AI video with motion and life. Animate photos and artwork instantly. Free online tool, no signup required. Part of Deep Vortex AI.',
     siteName: 'Deep Vortex AI',
     locale: 'en_US',
     images: [{ url: 'https://video.deepvortexai.com/deepgoldremoveetiny.png', width: 512, height: 512, alt: 'Deep Vortex AI Image to Video' }],
@@ -43,8 +43,8 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     site: '@deepvortexart',
     creator: '@deepvortexart',
-    title: 'AI Image to Video — Deep Vortex AI',
-    description: 'Transform any image into a stunning AI-generated video with motion and life.',
+    title: 'AI Image to Video Free Online — Animate Photos Instantly No Signup | Deep Vortex AI',
+    description: 'Transform any image into a stunning AI video with motion and life. Animate photos and artwork instantly. Free online tool, no signup required. Part of Deep Vortex AI.',
     images: ['https://video.deepvortexai.com/deepgoldremoveetiny.png'],
   },
   icons: {
