@@ -37,7 +37,7 @@ export const metadata: Metadata = {
     description: 'Transform any image into a stunning AI video with motion and life. Animate photos and artwork instantly. Free online tool, no signup required. Part of Deep Vortex AI.',
     siteName: 'Deep Vortex AI',
     locale: 'en_US',
-    images: [{ url: 'https://video.deepvortexai.com/deepgoldremoveetiny.png', width: 512, height: 512, alt: 'Deep Vortex AI Image to Video' }],
+    images: [{ url: '/og-image.webp', width: 512, height: 512, alt: 'Deep Vortex AI Image to Video' }],
   },
   twitter: {
     card: 'summary_large_image',
@@ -45,7 +45,7 @@ export const metadata: Metadata = {
     creator: '@deepvortexart',
     title: 'AI Image to Video Free Online — Animate Photos Instantly No Signup | Deep Vortex AI',
     description: 'Transform any image into a stunning AI video with motion and life. Animate photos and artwork instantly. Free online tool, no signup required. Part of Deep Vortex AI.',
-    images: ['https://video.deepvortexai.com/deepgoldremoveetiny.png'],
+    images: ['/og-image.webp'],
   },
   icons: {
     icon: [
@@ -93,7 +93,7 @@ export default function RootLayout({
               name: 'Deep Vortex AI Image to Video',
               description: 'Transform any image into a stunning AI-generated video with motion and life.',
               url: 'https://video.deepvortexai.com',
-              images: 'https://video.deepvortexai.com/deepgoldremoveetiny.png',
+              images: '/og-image.webp',
               applicationCategory: 'MultimediaApplication',
               operatingSystem: 'All',
               offers: {
