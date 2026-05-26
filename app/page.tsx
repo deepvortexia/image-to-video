@@ -82,7 +82,9 @@ function AppContent() {
   }, [user])
 
   const handleFileSelect = (file: File) => {
-    if (!file.type.match(/^image\/(jpeg|png|webp)$/)) {
+    const validMime = /^image\/(jpeg|jpg|png|webp)$/.test(file.type)
+    const validExt = /\.(jpe?g|png|webp)$/i.test(file.name)
+    if (!validMime && !validExt) {
       setToast({ title: 'Invalid File', message: 'Please upload a JPG, PNG, or WEBP image.', type: 'error' })
       return
     }
@@ -112,9 +114,12 @@ function AppContent() {
   const uploadInputImage = async (file: File, userId: string): Promise<string> => {
     const ext = file.name.split('.').pop() || 'jpg'
     const fileName = `${userId}/${Date.now()}-input.${ext}`
+    const contentType = file.type.startsWith('image/') ? file.type :
+      file.name.match(/\.png$/i) ? 'image/png' :
+      file.name.match(/\.webp$/i) ? 'image/webp' : 'image/jpeg'
     const { error } = await supabase.storage
       .from('video-inputs')
-      .upload(fileName, file, { contentType: file.type, upsert: false })
+      .upload(fileName, file, { contentType, upsert: false })
     if (error) throw new Error(`Upload failed: ${error.message}`)
     const { data: { publicUrl } } = supabase.storage.from('video-inputs').getPublicUrl(fileName)
     return publicUrl
@@ -347,7 +352,7 @@ function AppContent() {
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/jpeg,image/png,image/webp"
+            accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
             onChange={handleFileInputChange}
             style={{ display: 'none' }}
           />
