@@ -325,31 +325,33 @@ function AppContent() {
         <div className="prompt-section-wrapper">
           <h3 className="prompt-section-title"><span className="title-icon">🖼️</span>Upload Your Image</h3>
 
-          <div
-            className={`upload-zone${isDragging ? ' upload-zone-dragging' : ''}${uploadedImageUrl ? ' upload-zone-has-image' : ''}`}
-            onClick={() => !uploadedImageUrl && fileInputRef.current?.click()}
-            onDragOver={(e) => { e.preventDefault(); setIsDragging(true) }}
-            onDragLeave={() => setIsDragging(false)}
-            onDrop={handleDrop}
-          >
-            {uploadedImageUrl ? (
-              <div className="upload-zone-preview">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={uploadedImageUrl} alt="Uploaded" className="upload-preview-img" />
-                <button className="upload-change-btn" onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click() }}>
-                  Change Image
-                </button>
-              </div>
-            ) : (
-              <div className="upload-zone-placeholder">
-                <span className="upload-icon">📁</span>
-                <p className="upload-text">Drop your image here or <span className="upload-link">browse</span></p>
-                <p className="upload-hint">JPG, PNG, WEBP · Max 10MB</p>
-              </div>
-            )}
-          </div>
+          <label htmlFor="file-input" style={{ display: 'block', cursor: 'pointer' }}>
+            <div
+              className={`upload-zone${isDragging ? ' upload-zone-dragging' : ''}${uploadedImageUrl ? ' upload-zone-has-image' : ''}`}
+              onDragOver={(e) => { e.preventDefault(); setIsDragging(true) }}
+              onDragLeave={() => setIsDragging(false)}
+              onDrop={handleDrop}
+            >
+              {uploadedImageUrl ? (
+                <div className="upload-zone-preview" onClick={(e) => e.stopPropagation()}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={uploadedImageUrl} alt="Uploaded" className="upload-preview-img" />
+                  <label htmlFor="file-input" className="upload-change-btn" onClick={(e) => e.stopPropagation()}>
+                    Change Image
+                  </label>
+                </div>
+              ) : (
+                <div className="upload-zone-placeholder">
+                  <span className="upload-icon">📁</span>
+                  <p className="upload-text">Drop your image here or <span className="upload-link">browse</span></p>
+                  <p className="upload-hint">JPG, PNG, WEBP · Max 10MB</p>
+                </div>
+              )}
+            </div>
+          </label>
 
           <input
+            id="file-input"
             ref={fileInputRef}
             type="file"
             accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
