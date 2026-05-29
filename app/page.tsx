@@ -265,7 +265,7 @@ function AppContent() {
     const filename = `ai-video-${Date.now()}.mp4`
     const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent)
     if (isMobile) {
-      window.location.href = resultVideo
+      window.open(resultVideo, '_blank')
       return
     }
     try {
@@ -443,6 +443,11 @@ function AppContent() {
               <button onClick={downloadVideo} className="action-btn download-btn">
                 <span>📥</span> Download MP4
               </button>
+              {/Android|iPhone|iPad/i.test(typeof navigator !== 'undefined' ? navigator.userAgent : '') && (
+                <p style={{ fontSize: '0.75rem', color: '#aaa', margin: '-4px 0 4px', textAlign: 'center' }}>
+                  Tip: tap and hold the video to save it directly
+                </p>
+              )}
               {user && (
                 <button
                   onClick={saveFavorite}
