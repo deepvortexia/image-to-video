@@ -125,6 +125,24 @@ function AppContent() {
     return publicUrl
   }
 
+  const normalizeImageOrientation = (file: File): Promise<File> =>
+    createImageBitmap(file).then(bitmap => {
+      const canvas = document.createElement('canvas')
+      canvas.width = bitmap.width
+      canvas.height = bitmap.height
+      canvas.getContext('2d')!.drawImage(bitmap, 0, 0)
+      bitmap.close()
+      return new Promise<File>((resolve, reject) =>
+        canvas.toBlob(
+          blob => blob
+            ? resolve(new File([blob], file.name, { type: 'image/jpeg' }))
+            : reject(new Error('Canvas toBlob failed')),
+          'image/jpeg',
+          0.92
+        )
+      )
+    })
+
   const generateVideo = async () => {
     if (!uploadedFile) {
       setToast({ title: 'No Image', message: 'Please upload an image first.', type: 'warning' })
@@ -158,7 +176,8 @@ function AppContent() {
     try {
       // Stage 1: Upload image (0 → 10%)
       setLoadingProgress(4)
-      const imageUrl = await uploadInputImage(uploadedFile, user.id)
+      const normalizedFile = await normalizeImageOrientation(uploadedFile)
+      const imageUrl = await uploadInputImage(normalizedFile, user.id)
       setLoadingProgress(10)
 
         // Stage 2: Submit job to API
