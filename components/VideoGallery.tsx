@@ -59,6 +59,11 @@ export function VideoGallery({ refreshKey }: VideoGalleryProps) {
   }
 
   const handleDownload = async (resultUrl: string, id: string) => {
+    const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent)
+    if (isMobile) {
+      window.location.href = resultUrl
+      return
+    }
     try {
       const res = await fetch(resultUrl, { mode: 'cors' })
       if (!res.ok) throw new Error()
@@ -70,9 +75,9 @@ export function VideoGallery({ refreshKey }: VideoGalleryProps) {
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
-      URL.revokeObjectURL(url)
+      setTimeout(() => URL.revokeObjectURL(url), 500)
     } catch {
-      window.open(resultUrl, '_blank')
+      alert('Download failed. Try long-pressing the video to save it.')
     }
   }
 

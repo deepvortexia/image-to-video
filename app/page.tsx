@@ -263,6 +263,11 @@ function AppContent() {
   const downloadVideo = async () => {
     if (!resultVideo) return
     const filename = `ai-video-${Date.now()}.mp4`
+    const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent)
+    if (isMobile) {
+      window.location.href = resultVideo
+      return
+    }
     try {
       const response = await fetch(resultVideo)
       if (!response.ok) throw new Error(`HTTP ${response.status}`)
@@ -274,9 +279,9 @@ function AppContent() {
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
-      URL.revokeObjectURL(url)
+      setTimeout(() => URL.revokeObjectURL(url), 500)
     } catch {
-      window.open(resultVideo, '_blank')
+      alert('Download failed. Try long-pressing the video to save it.')
     }
   }
 
