@@ -78,8 +78,8 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    // minimax/hailuo-2.3-fast: first_frame_image + prompt, 6s at 768p
-    const replicateRes = await fetch('https://api.replicate.com/v1/models/minimax/hailuo-2.3-fast/predictions', {
+    // wan-video/wan-2.5-i2v-fast: first_frame_image + prompt
+    const replicateRes = await fetch('https://api.replicate.com/v1/models/wan-video/wan-2.5-i2v-fast/predictions', {
       method: 'POST',
       headers: {
         'Authorization': `Token ${apiKey}`,
