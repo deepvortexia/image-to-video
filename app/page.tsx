@@ -153,7 +153,9 @@ function AppContent() {
     try {
       // Stage 1: Upload image (0 → 10%)
       setLoadingProgress(4)
-      const imageUrl = await uploadInputImage(uploadedFile, user.id)
+      let fileToUpload = uploadedFile
+      try { fileToUpload = await normalizeImageOrientation(uploadedFile) } catch {}
+      const imageUrl = await uploadInputImage(fileToUpload, user.id)
       setLoadingProgress(10)
 
         // Stage 2: Submit job to API
@@ -349,7 +351,7 @@ function AppContent() {
             type="file"
             accept="image/jpeg,image/png,image/webp"
             onChange={handleFileInputChange}
-            style={{ display: 'none' }}
+            style={{ opacity: 0, position: 'absolute', width: '1px', height: '1px', overflow: 'hidden' }}
           />
 
           <div className="extra-inputs">
