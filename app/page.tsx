@@ -95,7 +95,8 @@ function AppContent() {
       return
     }
     setResultVideo('')
-    const normalized = await normalizeImageOrientation(file)
+    let normalized = file
+    try { normalized = await normalizeImageOrientation(file) } catch { /* fall back to raw file */ }
     if (uploadedImageUrl) URL.revokeObjectURL(uploadedImageUrl)
     setUploadedFile(normalized)
     setUploadedImageUrl(URL.createObjectURL(normalized))
