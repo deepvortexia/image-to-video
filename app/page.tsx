@@ -31,7 +31,7 @@ function AppContent() {
   const [favSaving, setFavSaving] = useState(false)
   const [favSaved, setFavSaved] = useState(false)
   const [duration, setDuration] = useState<number>(5)
-  const [resolution, setResolution] = useState<string>('480p')
+  const [resolution, setResolution] = useState<string>('720p')
   const [loadingStage, setLoadingStage] = useState<0 | 1 | 2 | 3>(0)
   const [loadingProgress, setLoadingProgress] = useState(0)
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
@@ -363,7 +363,7 @@ function AppContent() {
     setUploadedImageUrl('')
     setMotionPrompt('')
     setDuration(5)
-    setResolution('480p')
+    setResolution('720p')
     setFavSaved(false)
   }
 
@@ -479,8 +479,8 @@ function AppContent() {
                   value={resolution}
                   onChange={(e) => setResolution(e.target.value)}
                 >
-                  <option value="480p">480p</option>
                   <option value="720p">720p</option>
+                  <option value="1080p">1080p</option>
                 </select>
               </div>
             </div>

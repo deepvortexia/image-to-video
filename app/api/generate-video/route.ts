@@ -78,8 +78,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    // wan-video/wan-2.5-i2v-fast: first_frame_image + prompt
-    const replicateRes = await fetch('https://api.replicate.com/v1/models/wan-video/wan-2.5-i2v-fast/predictions', {
+    const replicateRes = await fetch('https://api.replicate.com/v1/models/minimax/hailuo-2.3-fast/predictions', {
       method: 'POST',
       headers: {
         'Authorization': `Token ${apiKey}`,
@@ -87,11 +86,10 @@ export async function POST(request: NextRequest) {
       },
       body: JSON.stringify({
         input: {
-          image: imageUrl,
+          first_frame_image: imageUrl,
           prompt: motionPrompt?.trim() || 'Cinematic motion, smooth animation',
           duration: typeof duration === 'number' ? duration : 5,
-          resolution: resolution || '480p',
-          prompt_optimizer: true,
+          resolution: resolution || '720p',
         },
       }),
     })
