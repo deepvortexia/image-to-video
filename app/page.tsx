@@ -360,7 +360,7 @@ function AppContent() {
               onDrop={handleDrop}
             >
               {uploadedImageUrl ? (
-                <div className="upload-zone-preview" onClick={(e) => e.stopPropagation()}>
+                <div className="upload-zone-preview">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={uploadedImageUrl} alt="Uploaded" className="upload-preview-img" />
                   <button type="button" className="upload-change-btn" onClick={(e) => { e.preventDefault(); fileInputRef.current?.click() }}>
