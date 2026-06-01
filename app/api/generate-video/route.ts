@@ -78,6 +78,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    // minimax/hailuo-2.3-fast: first_frame_image + prompt, 6s at 768p
     const replicateRes = await fetch('https://api.replicate.com/v1/models/minimax/hailuo-2.3-fast/predictions', {
       method: 'POST',
       headers: {
@@ -90,6 +91,7 @@ export async function POST(request: NextRequest) {
           prompt: motionPrompt?.trim() || 'Cinematic motion, smooth animation',
           duration: 6,
           resolution: '768p',
+          prompt_optimizer: true,
         },
       }),
     })

@@ -82,9 +82,8 @@ function AppContent() {
   }, [user])
 
   const handleFileSelect = (file: File) => {
-    const isImage = file.type.startsWith('image/') || /\.(jpe?g|png|webp|jpg|heic|avif)$/i.test(file.name) || file.size > 0
-    if (!isImage) {
-      setToast({ title: 'Invalid File', message: 'Please upload an image file.', type: 'error' })
+    if (!file.type.match(/^image\/(jpeg|png|webp)$/)) {
+      setToast({ title: 'Invalid File', message: 'Please upload a JPG, PNG, or WEBP image.', type: 'error' })
       return
     }
     if (file.size > 10 * 1024 * 1024) {
@@ -113,35 +112,13 @@ function AppContent() {
   const uploadInputImage = async (file: File, userId: string): Promise<string> => {
     const ext = file.name.split('.').pop() || 'jpg'
     const fileName = `${userId}/${Date.now()}-input.${ext}`
-    const contentType = file.type.startsWith('image/') ? file.type :
-      file.name.match(/\.png$/i) ? 'image/png' :
-      file.name.match(/\.webp$/i) ? 'image/webp' :
-      'image/jpeg'
     const { error } = await supabase.storage
       .from('video-inputs')
-      .upload(fileName, file, { contentType, upsert: false })
+      .upload(fileName, file, { contentType: file.type, upsert: false })
     if (error) throw new Error(`Upload failed: ${error.message}`)
     const { data: { publicUrl } } = supabase.storage.from('video-inputs').getPublicUrl(fileName)
     return publicUrl
   }
-
-  const normalizeImageOrientation = (file: File): Promise<File> =>
-    createImageBitmap(file).then(bitmap => {
-      const canvas = document.createElement('canvas')
-      canvas.width = bitmap.width
-      canvas.height = bitmap.height
-      canvas.getContext('2d')!.drawImage(bitmap, 0, 0)
-      bitmap.close()
-      return new Promise<File>((resolve, reject) =>
-        canvas.toBlob(
-          blob => blob
-            ? resolve(new File([blob], file.name, { type: 'image/jpeg' }))
-            : reject(new Error('Canvas toBlob failed')),
-          'image/jpeg',
-          0.92
-        )
-      )
-    })
 
   const generateVideo = async () => {
     if (!uploadedFile) {
@@ -176,9 +153,7 @@ function AppContent() {
     try {
       // Stage 1: Upload image (0 → 10%)
       setLoadingProgress(4)
-      let normalizedFile = uploadedFile
-      try { normalizedFile = await normalizeImageOrientation(uploadedFile) } catch { /* use raw file */ }
-      const imageUrl = await uploadInputImage(normalizedFile, user.id)
+      const imageUrl = await uploadInputImage(uploadedFile, user.id)
       setLoadingProgress(10)
 
         // Stage 2: Submit job to API
@@ -283,11 +258,6 @@ function AppContent() {
   const downloadVideo = async () => {
     if (!resultVideo) return
     const filename = `ai-video-${Date.now()}.mp4`
-    const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent)
-    if (isMobile) {
-      window.open(resultVideo, '_blank')
-      return
-    }
     try {
       const response = await fetch(resultVideo)
       if (!response.ok) throw new Error(`HTTP ${response.status}`)
@@ -299,9 +269,9 @@ function AppContent() {
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
-      setTimeout(() => URL.revokeObjectURL(url), 500)
+      URL.revokeObjectURL(url)
     } catch {
-      alert('Download failed. Try long-pressing the video to save it.')
+      window.open(resultVideo, '_blank')
     }
   }
 
@@ -350,38 +320,36 @@ function AppContent() {
         <div className="prompt-section-wrapper">
           <h3 className="prompt-section-title"><span className="title-icon">🖼️</span>Upload Your Image</h3>
 
-          <label htmlFor="file-input" style={{ display: 'block', cursor: 'pointer' }}>
-            <div
-              className={`upload-zone${isDragging ? ' upload-zone-dragging' : ''}${uploadedImageUrl ? ' upload-zone-has-image' : ''}`}
-              onDragOver={(e) => { e.preventDefault(); setIsDragging(true) }}
-              onDragLeave={() => setIsDragging(false)}
-              onDrop={handleDrop}
-            >
-              {uploadedImageUrl ? (
-                <div className="upload-zone-preview">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={uploadedImageUrl} alt="Uploaded" className="upload-preview-img" />
-                  <button type="button" className="upload-change-btn" onClick={(e) => { e.preventDefault(); fileInputRef.current?.click() }}>
-                    Change Image
-                  </button>
-                </div>
-              ) : (
-                <div className="upload-zone-placeholder">
-                  <span className="upload-icon">📁</span>
-                  <p className="upload-text">Drop your image here or <span className="upload-link">browse</span></p>
-                  <p className="upload-hint">JPG, PNG, WEBP · Max 10MB</p>
-                </div>
-              )}
-            </div>
-          </label>
+          <div
+            className={`upload-zone${isDragging ? ' upload-zone-dragging' : ''}${uploadedImageUrl ? ' upload-zone-has-image' : ''}`}
+            onClick={() => !uploadedImageUrl && fileInputRef.current?.click()}
+            onDragOver={(e) => { e.preventDefault(); setIsDragging(true) }}
+            onDragLeave={() => setIsDragging(false)}
+            onDrop={handleDrop}
+          >
+            {uploadedImageUrl ? (
+              <div className="upload-zone-preview">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={uploadedImageUrl} alt="Uploaded" className="upload-preview-img" />
+                <button className="upload-change-btn" onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click() }}>
+                  Change Image
+                </button>
+              </div>
+            ) : (
+              <div className="upload-zone-placeholder">
+                <span className="upload-icon">📁</span>
+                <p className="upload-text">Drop your image here or <span className="upload-link">browse</span></p>
+                <p className="upload-hint">JPG, PNG, WEBP · Max 10MB</p>
+              </div>
+            )}
+          </div>
 
           <input
-            id="file-input"
             ref={fileInputRef}
             type="file"
-            accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
+            accept="image/jpeg,image/png,image/webp"
             onChange={handleFileInputChange}
-            style={{ opacity: 0, position: 'absolute', width: '1px', height: '1px' }}
+            style={{ display: 'none' }}
           />
 
           <div className="extra-inputs">
@@ -463,11 +431,6 @@ function AppContent() {
               <button onClick={downloadVideo} className="action-btn download-btn">
                 <span>📥</span> Download MP4
               </button>
-              {/Android|iPhone|iPad/i.test(typeof navigator !== 'undefined' ? navigator.userAgent : '') && (
-                <p style={{ fontSize: '0.75rem', color: '#aaa', margin: '-4px 0 4px', textAlign: 'center' }}>
-                  Tip: tap and hold the video to save it directly
-                </p>
-              )}
               {user && (
                 <button
                   onClick={saveFavorite}
