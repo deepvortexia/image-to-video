@@ -84,7 +84,8 @@ function AppContent() {
   const handleFileSelect = (file: File) => {
     const validMime = /^image\/(jpeg|jpg|png|webp)$/.test(file.type)
     const validExt = /\.(jpe?g|png|webp)$/i.test(file.name)
-    if (!validMime && !validExt) {
+    const validType = file.type.startsWith('image/')
+    if (!validMime && !validExt && !validType) {
       setToast({ title: 'Invalid File', message: 'Please upload a JPG, PNG, or WEBP image.', type: 'error' })
       return
     }
@@ -116,7 +117,8 @@ function AppContent() {
     const fileName = `${userId}/${Date.now()}-input.${ext}`
     const contentType = file.type.startsWith('image/') ? file.type :
       file.name.match(/\.png$/i) ? 'image/png' :
-      file.name.match(/\.webp$/i) ? 'image/webp' : 'image/jpeg'
+      file.name.match(/\.webp$/i) ? 'image/webp' :
+      'image/jpeg'
     const { error } = await supabase.storage
       .from('video-inputs')
       .upload(fileName, file, { contentType, upsert: false })
@@ -176,7 +178,8 @@ function AppContent() {
     try {
       // Stage 1: Upload image (0 → 10%)
       setLoadingProgress(4)
-      const normalizedFile = await normalizeImageOrientation(uploadedFile)
+      let normalizedFile = uploadedFile
+      try { normalizedFile = await normalizeImageOrientation(uploadedFile) } catch { /* use raw file */ }
       const imageUrl = await uploadInputImage(normalizedFile, user.id)
       setLoadingProgress(10)
 
