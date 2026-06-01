@@ -125,23 +125,72 @@ function AppContent() {
     return publicUrl
   }
 
-  const normalizeImageOrientation = (file: File): Promise<File> =>
-    createImageBitmap(file).then(bitmap => {
-      const canvas = document.createElement('canvas')
-      canvas.width = bitmap.width
-      canvas.height = bitmap.height
-      canvas.getContext('2d')!.drawImage(bitmap, 0, 0)
-      bitmap.close()
-      return new Promise<File>((resolve, reject) =>
-        canvas.toBlob(
-          blob => blob
-            ? resolve(new File([blob], file.name, { type: 'image/jpeg' }))
-            : reject(new Error('Canvas toBlob failed')),
-          'image/jpeg',
-          0.92
-        )
-      )
+  const readExifOrientation = (file: File): Promise<number> =>
+    new Promise(resolve => {
+      const reader = new FileReader()
+      reader.onload = ({ target }) => {
+        try {
+          const view = new DataView(target!.result as ArrayBuffer)
+          if (view.getUint16(0, false) !== 0xFFD8) { resolve(1); return }
+          let offset = 2
+          while (offset < view.byteLength - 2) {
+            const marker = view.getUint16(offset, false)
+            offset += 2
+            if (marker === 0xFFE1) {
+              offset += 2
+              if (view.getUint32(offset, false) !== 0x45786966) { resolve(1); return }
+              const little = view.getUint16(offset + 6, false) === 0x4949
+              const ifdStart = offset + 6
+              const ifdOffset = ifdStart + view.getUint32(ifdStart + 4, little)
+              const entries = view.getUint16(ifdOffset, little)
+              for (let i = 0; i < entries; i++) {
+                if (view.getUint16(ifdOffset + 2 + i * 12, little) === 0x0112) {
+                  resolve(view.getUint16(ifdOffset + 2 + i * 12 + 8, little))
+                  return
+                }
+              }
+              resolve(1); return
+            }
+            if ((marker & 0xFF00) !== 0xFF00) break
+            offset += view.getUint16(offset, false)
+          }
+        } catch { /* ignore malformed EXIF */ }
+        resolve(1)
+      }
+      reader.onerror = () => resolve(1)
+      reader.readAsArrayBuffer(file.slice(0, 65536))
     })
+
+  const normalizeImageOrientation = (file: File): Promise<File> =>
+    readExifOrientation(file).then(orientation =>
+      createImageBitmap(file).then(bitmap => {
+        const swapped = orientation >= 5
+        const canvas = document.createElement('canvas')
+        canvas.width = swapped ? bitmap.height : bitmap.width
+        canvas.height = swapped ? bitmap.width : bitmap.height
+        const ctx = canvas.getContext('2d')!
+        switch (orientation) {
+          case 2: ctx.transform(-1, 0, 0, 1, bitmap.width, 0); break
+          case 3: ctx.transform(-1, 0, 0, -1, bitmap.width, bitmap.height); break
+          case 4: ctx.transform(1, 0, 0, -1, 0, bitmap.height); break
+          case 5: ctx.transform(0, 1, 1, 0, 0, 0); break
+          case 6: ctx.transform(0, 1, -1, 0, bitmap.height, 0); break
+          case 7: ctx.transform(0, -1, -1, 0, bitmap.height, bitmap.width); break
+          case 8: ctx.transform(0, -1, 1, 0, 0, bitmap.width); break
+        }
+        ctx.drawImage(bitmap, 0, 0)
+        bitmap.close()
+        return new Promise<File>((resolve, reject) =>
+          canvas.toBlob(
+            blob => blob
+              ? resolve(new File([blob], file.name, { type: 'image/jpeg' }))
+              : reject(new Error('Canvas toBlob failed')),
+            'image/jpeg',
+            0.92
+          )
+        )
+      })
+    )
 
   const generateVideo = async () => {
     if (!uploadedFile) {
@@ -357,12 +406,12 @@ function AppContent() {
               onDrop={handleDrop}
             >
               {uploadedImageUrl ? (
-                <div className="upload-zone-preview" onClick={(e) => e.stopPropagation()}>
+                <div className="upload-zone-preview">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={uploadedImageUrl} alt="Uploaded" className="upload-preview-img" />
-                  <label htmlFor="file-input" className="upload-change-btn" onClick={(e) => e.stopPropagation()}>
+                  <button type="button" className="upload-change-btn" onClick={(e) => { e.preventDefault(); fileInputRef.current?.click() }}>
                     Change Image
-                  </label>
+                  </button>
                 </div>
               ) : (
                 <div className="upload-zone-placeholder">
@@ -380,7 +429,7 @@ function AppContent() {
             type="file"
             accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
             onChange={handleFileInputChange}
-            style={{ display: 'none' }}
+            style={{ opacity: 0, position: 'absolute', width: '1px', height: '1px', overflow: 'hidden' }}
           />
 
           <div className="extra-inputs">
