@@ -88,8 +88,8 @@ export async function POST(request: NextRequest) {
         input: {
           first_frame_image: imageUrl,
           prompt: motionPrompt?.trim() || 'Cinematic motion, smooth animation',
-          duration: 5,
-          resolution: '720p',
+          duration: 6,
+          resolution: '768p',
         },
       }),
     })
