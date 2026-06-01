@@ -101,6 +101,7 @@ function AppContent() {
   }
 
   const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    alert('File received: ' + (e.target.files?.[0]?.name || 'none'))
     const file = e.target.files?.[0]
     if (file) handleFileSelect(file)
     e.target.value = ''
