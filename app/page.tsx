@@ -360,9 +360,9 @@ function AppContent() {
                 <div className="upload-zone-preview" onClick={(e) => e.stopPropagation()}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={uploadedImageUrl} alt="Uploaded" className="upload-preview-img" />
-                  <label htmlFor="file-input" className="upload-change-btn" onClick={(e) => e.stopPropagation()}>
+                  <button type="button" className="upload-change-btn" onClick={(e) => { e.preventDefault(); fileInputRef.current?.click() }}>
                     Change Image
-                  </label>
+                  </button>
                 </div>
               ) : (
                 <div className="upload-zone-placeholder">
@@ -380,7 +380,7 @@ function AppContent() {
             type="file"
             accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
             onChange={handleFileInputChange}
-            style={{ display: 'none' }}
+            style={{ opacity: 0, position: 'absolute', width: '1px', height: '1px' }}
           />
 
           <div className="extra-inputs">
