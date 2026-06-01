@@ -166,8 +166,7 @@ body {
   max-width: 100%; max-height: 280px; object-fit: contain;
   border-radius: 12px; display: block; margin: 0 auto;
 }
-.upload-change-btn,
-.upload-browse-btn {
+.upload-change-btn {
   margin-top: 0.75rem;
   padding: 0.5rem 1.2rem;
   background: rgba(212,175,55,0.1);
@@ -176,8 +175,7 @@ body {
   font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all 0.2s;
   display: block; margin-left: auto; margin-right: auto;
 }
-.upload-change-btn:hover,
-.upload-browse-btn:hover { background: rgba(212,175,55,0.2); border-color: var(--gold-primary); }
+.upload-change-btn:hover { background: rgba(212,175,55,0.2); border-color: var(--gold-primary); }
 
 /* ── Extra Inputs ── */
 .extra-inputs { margin-top: 1.5rem; display: flex; flex-direction: column; gap: 1.25rem; }

@@ -81,7 +81,7 @@ function AppContent() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user])
 
-  const handleFileSelect = async (file: File) => {
+  const handleFileSelect = (file: File) => {
     const validMime = /^image\/(jpeg|jpg|png|webp)$/.test(file.type)
     const validExt = /\.(jpe?g|png|webp)$/i.test(file.name)
     if (!validMime && !validExt) {
@@ -93,15 +93,12 @@ function AppContent() {
       return
     }
     setResultVideo('')
-    let normalized = file
-    try { normalized = await normalizeImageOrientation(file) } catch { /* fall back to raw file */ }
+    setUploadedFile(file)
     if (uploadedImageUrl) URL.revokeObjectURL(uploadedImageUrl)
-    setUploadedFile(normalized)
-    setUploadedImageUrl(URL.createObjectURL(normalized))
+    setUploadedImageUrl(URL.createObjectURL(file))
   }
 
   const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    alert('File received: ' + (e.target.files?.[0]?.name || 'none'))
     const file = e.target.files?.[0]
     if (file) handleFileSelect(file)
     e.target.value = ''
@@ -128,72 +125,23 @@ function AppContent() {
     return publicUrl
   }
 
-  const readExifOrientation = (file: File): Promise<number> =>
-    new Promise(resolve => {
-      const reader = new FileReader()
-      reader.onload = ({ target }) => {
-        try {
-          const view = new DataView(target!.result as ArrayBuffer)
-          if (view.getUint16(0, false) !== 0xFFD8) { resolve(1); return }
-          let offset = 2
-          while (offset < view.byteLength - 2) {
-            const marker = view.getUint16(offset, false)
-            offset += 2
-            if (marker === 0xFFE1) {
-              offset += 2
-              if (view.getUint32(offset, false) !== 0x45786966) { resolve(1); return }
-              const little = view.getUint16(offset + 6, false) === 0x4949
-              const ifdStart = offset + 6
-              const ifdOffset = ifdStart + view.getUint32(ifdStart + 4, little)
-              const entries = view.getUint16(ifdOffset, little)
-              for (let i = 0; i < entries; i++) {
-                if (view.getUint16(ifdOffset + 2 + i * 12, little) === 0x0112) {
-                  resolve(view.getUint16(ifdOffset + 2 + i * 12 + 8, little))
-                  return
-                }
-              }
-              resolve(1); return
-            }
-            if ((marker & 0xFF00) !== 0xFF00) break
-            offset += view.getUint16(offset, false)
-          }
-        } catch { /* ignore malformed EXIF */ }
-        resolve(1)
-      }
-      reader.onerror = () => resolve(1)
-      reader.readAsArrayBuffer(file.slice(0, 65536))
-    })
-
   const normalizeImageOrientation = (file: File): Promise<File> =>
-    readExifOrientation(file).then(orientation =>
-      createImageBitmap(file).then(bitmap => {
-        const swapped = orientation >= 5
-        const canvas = document.createElement('canvas')
-        canvas.width = swapped ? bitmap.height : bitmap.width
-        canvas.height = swapped ? bitmap.width : bitmap.height
-        const ctx = canvas.getContext('2d')!
-        switch (orientation) {
-          case 2: ctx.transform(-1, 0, 0, 1, bitmap.width, 0); break
-          case 3: ctx.transform(-1, 0, 0, -1, bitmap.width, bitmap.height); break
-          case 4: ctx.transform(1, 0, 0, -1, 0, bitmap.height); break
-          case 5: ctx.transform(0, 1, 1, 0, 0, 0); break
-          case 6: ctx.transform(0, 1, -1, 0, bitmap.height, 0); break
-          case 7: ctx.transform(0, -1, -1, 0, bitmap.height, bitmap.width); break
-          case 8: ctx.transform(0, -1, 1, 0, 0, bitmap.width); break
-        }
-        ctx.drawImage(bitmap, 0, 0)
-        bitmap.close()
-        return new Promise<File>((resolve, reject) =>
-          canvas.toBlob(
-            blob => blob
-              ? resolve(new File([blob], file.name, { type: 'image/jpeg' }))
-              : reject(new Error('Canvas toBlob failed')),
-            'image/jpeg',
-            0.92
-          )
+    createImageBitmap(file).then(bitmap => {
+      const canvas = document.createElement('canvas')
+      canvas.width = bitmap.width
+      canvas.height = bitmap.height
+      canvas.getContext('2d')!.drawImage(bitmap, 0, 0)
+      bitmap.close()
+      return new Promise<File>((resolve, reject) =>
+        canvas.toBlob(
+          blob => blob
+            ? resolve(new File([blob], file.name, { type: 'image/jpeg' }))
+            : reject(new Error('Canvas toBlob failed')),
+          'image/jpeg',
+          0.92
         )
-      })
-    )
+      )
+    })
 
   const generateVideo = async () => {
     if (!uploadedFile) {
@@ -226,9 +174,10 @@ function AppContent() {
     elapsedIntervalRef.current = setInterval(() => setElapsedSeconds(s => s + 1), 1000)
 
     try {
-      // Stage 1: Upload image (0 → 10%) — file already EXIF-normalized at selection time
+      // Stage 1: Upload image (0 → 10%)
       setLoadingProgress(4)
-      const imageUrl = await uploadInputImage(uploadedFile, user.id)
+      const normalizedFile = await normalizeImageOrientation(uploadedFile)
+      const imageUrl = await uploadInputImage(normalizedFile, user.id)
       setLoadingProgress(10)
 
         // Stage 2: Submit job to API
@@ -239,7 +188,7 @@ function AppContent() {
       const postRes = await fetch('/api/generate-video', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ imageUrl, motionPrompt, duration: 5, resolution: '720p' }),
+        body: JSON.stringify({ imageUrl, motionPrompt }),
       })
 
       if (!postRes.ok) {
@@ -361,7 +310,6 @@ function AppContent() {
     if (uploadedImageUrl) URL.revokeObjectURL(uploadedImageUrl)
     setUploadedImageUrl('')
     setMotionPrompt('')
-
     setFavSaved(false)
   }
 
@@ -401,47 +349,39 @@ function AppContent() {
         <div className="prompt-section-wrapper">
           <h3 className="prompt-section-title"><span className="title-icon">🖼️</span>Upload Your Image</h3>
 
+          <label htmlFor="file-input" style={{ display: 'block', cursor: 'pointer' }}>
+            <div
+              className={`upload-zone${isDragging ? ' upload-zone-dragging' : ''}${uploadedImageUrl ? ' upload-zone-has-image' : ''}`}
+              onDragOver={(e) => { e.preventDefault(); setIsDragging(true) }}
+              onDragLeave={() => setIsDragging(false)}
+              onDrop={handleDrop}
+            >
+              {uploadedImageUrl ? (
+                <div className="upload-zone-preview" onClick={(e) => e.stopPropagation()}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={uploadedImageUrl} alt="Uploaded" className="upload-preview-img" />
+                  <label htmlFor="file-input" className="upload-change-btn" onClick={(e) => e.stopPropagation()}>
+                    Change Image
+                  </label>
+                </div>
+              ) : (
+                <div className="upload-zone-placeholder">
+                  <span className="upload-icon">📁</span>
+                  <p className="upload-text">Drop your image here or <span className="upload-link">browse</span></p>
+                  <p className="upload-hint">JPG, PNG, WEBP · Max 10MB</p>
+                </div>
+              )}
+            </div>
+          </label>
+
           <input
+            id="file-input"
             ref={fileInputRef}
             type="file"
             accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
             onChange={handleFileInputChange}
-            style={{ opacity: 0, position: 'absolute', width: '1px', height: '1px', overflow: 'hidden' }}
+            style={{ display: 'none' }}
           />
-
-          <div
-            className={`upload-zone${isDragging ? ' upload-zone-dragging' : ''}${uploadedImageUrl ? ' upload-zone-has-image' : ''}`}
-            onDragOver={(e) => { e.preventDefault(); setIsDragging(true) }}
-            onDragLeave={() => setIsDragging(false)}
-            onDrop={handleDrop}
-          >
-            {uploadedImageUrl ? (
-              <div className="upload-zone-preview">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={uploadedImageUrl} alt="Uploaded" className="upload-preview-img" />
-                <button
-                  type="button"
-                  className="upload-change-btn"
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  Change Image
-                </button>
-              </div>
-            ) : (
-              <div className="upload-zone-placeholder">
-                <span className="upload-icon">📁</span>
-                <p className="upload-text">Drop your image here or</p>
-                <button
-                  type="button"
-                  className="upload-browse-btn"
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  Browse Files
-                </button>
-                <p className="upload-hint">JPG, PNG, WEBP · Max 10MB</p>
-              </div>
-            )}
-          </div>
 
           <div className="extra-inputs">
             <div>

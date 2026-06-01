@@ -12,7 +12,7 @@ const COST_CREDITS = 2
 
 // POST: deduct credits, create Replicate prediction, return {id} immediately
 export async function POST(request: NextRequest) {
-  const { imageUrl, motionPrompt, duration, resolution } = await request.json()
+  const { imageUrl, motionPrompt } = await request.json()
 
   if (!imageUrl) {
     return NextResponse.json({ error: 'Image URL is required' }, { status: 400 })
@@ -78,7 +78,8 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const replicateRes = await fetch('https://api.replicate.com/v1/models/minimax/hailuo-2.3-fast/predictions', {
+    // wan-video/wan-2.5-i2v-fast: first_frame_image + prompt
+    const replicateRes = await fetch('https://api.replicate.com/v1/models/wan-video/wan-2.5-i2v-fast/predictions', {
       method: 'POST',
       headers: {
         'Authorization': `Token ${apiKey}`,
@@ -88,8 +89,9 @@ export async function POST(request: NextRequest) {
         input: {
           first_frame_image: imageUrl,
           prompt: motionPrompt?.trim() || 'Cinematic motion, smooth animation',
-          duration: typeof duration === 'number' ? duration : 5,
-          resolution: resolution || '720p',
+          duration: 6,
+          resolution: '768p',
+          prompt_optimizer: true,
         },
       }),
     })
