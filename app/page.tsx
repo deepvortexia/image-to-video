@@ -83,7 +83,7 @@ function AppContent() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user])
 
-  const handleFileSelect = (file: File) => {
+  const handleFileSelect = async (file: File) => {
     const validMime = /^image\/(jpeg|jpg|png|webp)$/.test(file.type)
     const validExt = /\.(jpe?g|png|webp)$/i.test(file.name)
     if (!validMime && !validExt) {
@@ -95,16 +95,14 @@ function AppContent() {
       return
     }
     setResultVideo('')
-    setUploadedFile(file)
+    const normalized = await normalizeImageOrientation(file)
     if (uploadedImageUrl) URL.revokeObjectURL(uploadedImageUrl)
-    const url = URL.createObjectURL(file)
-    console.log('[upload] blob URL created:', url)
-    setUploadedImageUrl(url)
+    setUploadedFile(normalized)
+    setUploadedImageUrl(URL.createObjectURL(normalized))
   }
 
   const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    console.log('[upload] file received:', file?.name, file?.type, file?.size)
     if (file) handleFileSelect(file)
     e.target.value = ''
   }
@@ -228,10 +226,9 @@ function AppContent() {
     elapsedIntervalRef.current = setInterval(() => setElapsedSeconds(s => s + 1), 1000)
 
     try {
-      // Stage 1: Upload image (0 → 10%)
+      // Stage 1: Upload image (0 → 10%) — file already EXIF-normalized at selection time
       setLoadingProgress(4)
-      const normalizedFile = await normalizeImageOrientation(uploadedFile)
-      const imageUrl = await uploadInputImage(normalizedFile, user.id)
+      const imageUrl = await uploadInputImage(uploadedFile, user.id)
       setLoadingProgress(10)
 
         // Stage 2: Submit job to API
@@ -405,10 +402,16 @@ function AppContent() {
         <div className="prompt-section-wrapper">
           <h3 className="prompt-section-title"><span className="title-icon">🖼️</span>Upload Your Image</h3>
 
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
+            onChange={handleFileInputChange}
+            style={{ opacity: 0, position: 'absolute', width: '1px', height: '1px', overflow: 'hidden' }}
+          />
+
           <div
             className={`upload-zone${isDragging ? ' upload-zone-dragging' : ''}${uploadedImageUrl ? ' upload-zone-has-image' : ''}`}
-            style={{ cursor: uploadedImageUrl ? 'default' : 'pointer' }}
-            onClick={() => { if (!uploadedImageUrl) fileInputRef.current?.click() }}
             onDragOver={(e) => { e.preventDefault(); setIsDragging(true) }}
             onDragLeave={() => setIsDragging(false)}
             onDrop={handleDrop}
@@ -416,28 +419,30 @@ function AppContent() {
             {uploadedImageUrl ? (
               <div className="upload-zone-preview">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={uploadedImageUrl} alt="Uploaded" className="upload-preview-img" onLoad={() => console.log('[upload] img rendered:', uploadedImageUrl)} />
-                <button type="button" className="upload-change-btn" onClick={() => fileInputRef.current?.click()}>
+                <img src={uploadedImageUrl} alt="Uploaded" className="upload-preview-img" />
+                <button
+                  type="button"
+                  className="upload-change-btn"
+                  onClick={() => fileInputRef.current?.click()}
+                >
                   Change Image
                 </button>
               </div>
             ) : (
               <div className="upload-zone-placeholder">
                 <span className="upload-icon">📁</span>
-                <p className="upload-text">Drop your image here or <span className="upload-link">browse</span></p>
+                <p className="upload-text">Drop your image here or</p>
+                <button
+                  type="button"
+                  className="upload-browse-btn"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  Browse Files
+                </button>
                 <p className="upload-hint">JPG, PNG, WEBP · Max 10MB</p>
               </div>
             )}
           </div>
-
-          <input
-            id="file-input"
-            ref={fileInputRef}
-            type="file"
-            accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
-            onChange={handleFileInputChange}
-            style={{ opacity: 0, position: 'absolute', width: '1px', height: '1px', overflow: 'hidden' }}
-          />
 
           <div className="extra-inputs">
             <div>
