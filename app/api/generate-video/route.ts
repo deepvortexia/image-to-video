@@ -12,7 +12,7 @@ const COST_CREDITS = 2
 
 // POST: deduct credits, create Replicate prediction, return {id} immediately
 export async function POST(request: NextRequest) {
-  const { imageUrl, motionPrompt } = await request.json()
+  const { imageUrl, motionPrompt, duration, resolution } = await request.json()
 
   if (!imageUrl) {
     return NextResponse.json({ error: 'Image URL is required' }, { status: 400 })
@@ -87,10 +87,10 @@ export async function POST(request: NextRequest) {
       },
       body: JSON.stringify({
         input: {
-          first_frame_image: imageUrl,
+          image: imageUrl,
           prompt: motionPrompt?.trim() || 'Cinematic motion, smooth animation',
-          duration: 6,
-          resolution: '768p',
+          duration: typeof duration === 'number' ? duration : 5,
+          resolution: resolution || '480p',
           prompt_optimizer: true,
         },
       }),
