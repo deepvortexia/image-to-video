@@ -97,11 +97,14 @@ function AppContent() {
     setResultVideo('')
     setUploadedFile(file)
     if (uploadedImageUrl) URL.revokeObjectURL(uploadedImageUrl)
-    setUploadedImageUrl(URL.createObjectURL(file))
+    const url = URL.createObjectURL(file)
+    console.log('[upload] blob URL created:', url)
+    setUploadedImageUrl(url)
   }
 
   const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
+    console.log('[upload] file received:', file?.name, file?.type, file?.size)
     if (file) handleFileSelect(file)
     e.target.value = ''
   }
@@ -402,30 +405,30 @@ function AppContent() {
         <div className="prompt-section-wrapper">
           <h3 className="prompt-section-title"><span className="title-icon">🖼️</span>Upload Your Image</h3>
 
-          <label htmlFor="file-input" style={{ display: 'block', cursor: 'pointer' }}>
-            <div
-              className={`upload-zone${isDragging ? ' upload-zone-dragging' : ''}${uploadedImageUrl ? ' upload-zone-has-image' : ''}`}
-              onDragOver={(e) => { e.preventDefault(); setIsDragging(true) }}
-              onDragLeave={() => setIsDragging(false)}
-              onDrop={handleDrop}
-            >
-              {uploadedImageUrl ? (
-                <div className="upload-zone-preview">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={uploadedImageUrl} alt="Uploaded" className="upload-preview-img" />
-                  <button type="button" className="upload-change-btn" onClick={(e) => { e.preventDefault(); fileInputRef.current?.click() }}>
-                    Change Image
-                  </button>
-                </div>
-              ) : (
-                <div className="upload-zone-placeholder">
-                  <span className="upload-icon">📁</span>
-                  <p className="upload-text">Drop your image here or <span className="upload-link">browse</span></p>
-                  <p className="upload-hint">JPG, PNG, WEBP · Max 10MB</p>
-                </div>
-              )}
-            </div>
-          </label>
+          <div
+            className={`upload-zone${isDragging ? ' upload-zone-dragging' : ''}${uploadedImageUrl ? ' upload-zone-has-image' : ''}`}
+            style={{ cursor: uploadedImageUrl ? 'default' : 'pointer' }}
+            onClick={() => { if (!uploadedImageUrl) fileInputRef.current?.click() }}
+            onDragOver={(e) => { e.preventDefault(); setIsDragging(true) }}
+            onDragLeave={() => setIsDragging(false)}
+            onDrop={handleDrop}
+          >
+            {uploadedImageUrl ? (
+              <div className="upload-zone-preview">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={uploadedImageUrl} alt="Uploaded" className="upload-preview-img" onLoad={() => console.log('[upload] img rendered:', uploadedImageUrl)} />
+                <button type="button" className="upload-change-btn" onClick={() => fileInputRef.current?.click()}>
+                  Change Image
+                </button>
+              </div>
+            ) : (
+              <div className="upload-zone-placeholder">
+                <span className="upload-icon">📁</span>
+                <p className="upload-text">Drop your image here or <span className="upload-link">browse</span></p>
+                <p className="upload-hint">JPG, PNG, WEBP · Max 10MB</p>
+              </div>
+            )}
+          </div>
 
           <input
             id="file-input"
