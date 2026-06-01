@@ -82,11 +82,9 @@ function AppContent() {
   }, [user])
 
   const handleFileSelect = (file: File) => {
-    const validMime = /^image\/(jpeg|jpg|png|webp)$/.test(file.type)
-    const validExt = /\.(jpe?g|png|webp)$/i.test(file.name)
-    const validType = file.type.startsWith('image/')
-    if (!validMime && !validExt && !validType) {
-      setToast({ title: 'Invalid File', message: 'Please upload a JPG, PNG, or WEBP image.', type: 'error' })
+    const isImage = file.type.startsWith('image/') || /\.(jpe?g|png|webp|jpg|heic|avif)$/i.test(file.name) || file.size > 0
+    if (!isImage) {
+      setToast({ title: 'Invalid File', message: 'Please upload an image file.', type: 'error' })
       return
     }
     if (file.size > 10 * 1024 * 1024) {
