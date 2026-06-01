@@ -30,8 +30,6 @@ function AppContent() {
   const [favRefreshKey, setFavRefreshKey] = useState(0)
   const [favSaving, setFavSaving] = useState(false)
   const [favSaved, setFavSaved] = useState(false)
-  const [duration, setDuration] = useState<number>(5)
-  const [resolution, setResolution] = useState<string>('720p')
   const [loadingStage, setLoadingStage] = useState<0 | 1 | 2 | 3>(0)
   const [loadingProgress, setLoadingProgress] = useState(0)
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
@@ -240,7 +238,7 @@ function AppContent() {
       const postRes = await fetch('/api/generate-video', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ imageUrl, motionPrompt, duration, resolution }),
+        body: JSON.stringify({ imageUrl, motionPrompt, duration: 5, resolution: '720p' }),
       })
 
       if (!postRes.ok) {
@@ -362,8 +360,7 @@ function AppContent() {
     if (uploadedImageUrl) URL.revokeObjectURL(uploadedImageUrl)
     setUploadedImageUrl('')
     setMotionPrompt('')
-    setDuration(5)
-    setResolution('720p')
+
     setFavSaved(false)
   }
 
@@ -456,33 +453,6 @@ function AppContent() {
                 maxLength={500}
                 rows={3}
               />
-            </div>
-
-            <div style={{ display: 'flex', gap: '12px', marginTop: '12px' }}>
-              <div style={{ flex: 1 }}>
-                <label className="input-label">Duration</label>
-                <select
-                  className="motion-prompt-textarea"
-                  style={{ padding: '8px 12px', cursor: 'pointer' }}
-                  value={duration}
-                  onChange={(e) => setDuration(Number(e.target.value))}
-                >
-                  <option value={5}>5 seconds</option>
-                  <option value={10}>10 seconds</option>
-                </select>
-              </div>
-              <div style={{ flex: 1 }}>
-                <label className="input-label">Resolution</label>
-                <select
-                  className="motion-prompt-textarea"
-                  style={{ padding: '8px 12px', cursor: 'pointer' }}
-                  value={resolution}
-                  onChange={(e) => setResolution(e.target.value)}
-                >
-                  <option value="720p">720p</option>
-                  <option value="1080p">1080p</option>
-                </select>
-              </div>
             </div>
 
             </div>
