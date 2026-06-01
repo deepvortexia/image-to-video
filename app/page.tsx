@@ -120,6 +120,24 @@ function AppContent() {
     return publicUrl
   }
 
+  const normalizeImageOrientation = (file: File): Promise<File> =>
+    new Promise((resolve) => {
+      createImageBitmap(file).then(bitmap => {
+        const canvas = document.createElement('canvas')
+        canvas.width = bitmap.width
+        canvas.height = bitmap.height
+        canvas.getContext('2d')!.drawImage(bitmap, 0, 0)
+        bitmap.close()
+        canvas.toBlob(
+          blob => blob
+            ? resolve(new File([blob], file.name, { type: 'image/jpeg' }))
+            : resolve(file),
+          'image/jpeg',
+          0.92
+        )
+      }).catch(() => resolve(file))
+    })
+
   const generateVideo = async () => {
     if (!uploadedFile) {
       setToast({ title: 'No Image', message: 'Please upload an image first.', type: 'warning' })
