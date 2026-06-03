@@ -10,6 +10,7 @@ import { supabase } from '../lib/supabase'
 import { VideoGallery } from '../components/VideoGallery'
 
 const COST_CREDITS = 2
+const MAX_IMAGE_DIMENSION = 1920
 const CREDIT_REFRESH_ERROR = 'Payment successful, but there was a temporary issue syncing your credits. Please refresh the page to see your updated balance.'
 const PENDING_STRIPE_SESSION_KEY = 'pending_stripe_session'
 
@@ -100,25 +101,52 @@ function AppContent() {
       return
     }
     setResultVideo('')
-    setUploadedFile(file)
-    // Render the preview from a self-contained data URL rather than a blob: URL.
-    // On Android Chrome/Firefox the File returned by the photo picker is backed
-    // lazily by a content:// provider; a blob: URL from createObjectURL only reads
-    // those bytes when the <img> decodes — after React paints — and intermittently
-    // fails when the provider is reclaimed in that window (the random preview loss).
-    // FileReader pulls the full bytes into memory now, so the <img> src no longer
-    // depends on the provider still being alive at paint time.
-    const reader = new FileReader()
-    reader.onload = () => {
-      if (typeof reader.result === 'string') setUploadedImageUrl(reader.result)
-      // Clear only after the read completes — resetting the input earlier can make
-      // Android release the content:// source mid-read and corrupt the preview.
-      clearFileInput()
-    }
-    reader.onerror = () => {
+
+    const fail = () => {
       setToast({ title: 'Preview Error', message: 'Could not load image preview. Please try again.', type: 'error' })
       clearFileInput()
     }
+
+    // Decode the picked image once, downscale it to a sane bound, and re-encode to
+    // a clean in-memory JPEG. That single canvas output is the source of truth for
+    // BOTH the preview and the upload bytes — so neither depends on the original
+    // Android content:// handle, and a full-res phone photo can't blow Blink's
+    // decode budget on a memory-constrained device (the residual random failures).
+    // FileReader pulls the bytes into memory first so the <img> decode that feeds
+    // the canvas never lazily dereferences the content:// provider.
+    const reader = new FileReader()
+    reader.onload = () => {
+      if (typeof reader.result !== 'string') { fail(); return }
+      const img = new Image()
+      img.onload = () => {
+        const longest = Math.max(img.naturalWidth, img.naturalHeight)
+        const scale = Math.min(1, MAX_IMAGE_DIMENSION / longest)
+        const w = Math.max(1, Math.round(img.naturalWidth * scale))
+        const h = Math.max(1, Math.round(img.naturalHeight * scale))
+        const canvas = document.createElement('canvas')
+        canvas.width = w
+        canvas.height = h
+        const ctx = canvas.getContext('2d')
+        if (!ctx) { fail(); return }
+        ctx.drawImage(img, 0, 0, w, h)
+        canvas.toBlob(
+          blob => {
+            if (!blob) { fail(); return }
+            const baseName = file.name.replace(/\.[^.]+$/, '') || 'image'
+            // Commit the File and the preview together so Generate can never run
+            // against a half-processed image (the earlier Generate-before-read race).
+            setUploadedFile(new File([blob], `${baseName}.jpg`, { type: 'image/jpeg' }))
+            setUploadedImageUrl(canvas.toDataURL('image/jpeg', 0.92))
+            clearFileInput()
+          },
+          'image/jpeg',
+          0.92
+        )
+      }
+      img.onerror = () => fail()
+      img.src = reader.result
+    }
+    reader.onerror = () => fail()
     reader.readAsDataURL(file)
   }
 
@@ -149,42 +177,6 @@ function AppContent() {
     const { data: { publicUrl } } = supabase.storage.from('video-inputs').getPublicUrl(fileName)
     return publicUrl
   }
-
-  // Rebuild a real File from the in-memory preview data URL. fetch() decodes the
-  // base64 into a Blob whose bytes live in the page, with no dependency on the
-  // Android content:// handle that the original picked File wraps.
-  const dataUrlToFile = async (dataUrl: string, fileName: string): Promise<File> => {
-    const res = await fetch(dataUrl)
-    const blob = await res.blob()
-    return new File([blob], fileName, { type: blob.type || 'image/jpeg' })
-  }
-
-  const normalizeImageOrientation = (file: File): Promise<File> =>
-    new Promise((resolve) => {
-      const img = new Image()
-      const objectUrl = URL.createObjectURL(file)
-      img.onload = () => {
-        URL.revokeObjectURL(objectUrl)
-        const canvas = document.createElement('canvas')
-        canvas.width = img.naturalWidth
-        canvas.height = img.naturalHeight
-        const ctx = canvas.getContext('2d')
-        if (!ctx) { resolve(file); return }
-        ctx.drawImage(img, 0, 0)
-        canvas.toBlob(
-          blob => blob
-            ? resolve(new File([blob], file.name, { type: 'image/jpeg' }))
-            : resolve(file),
-          'image/jpeg',
-          0.92
-        )
-      }
-      img.onerror = () => {
-        URL.revokeObjectURL(objectUrl)
-        resolve(file)
-      }
-      img.src = objectUrl
-    })
 
   const generateVideo = async () => {
     if (!uploadedFile) {
@@ -219,17 +211,10 @@ function AppContent() {
     try {
       // Stage 1: Upload image (0 → 10%)
       setLoadingProgress(4)
-      // Upload from the in-memory preview bytes, not the original File from state.
-      // On Android the original File is only a handle over the picker's content://
-      // provider, which can be stale by the time the user taps Generate — causing
-      // silent upload failures. The data URL already holds the bytes in memory, so
-      // rebuilding from it (and normalizing that copy) never touches the provider.
-      let fileToUpload = uploadedFile
-      if (uploadedImageUrl.startsWith('data:')) {
-        try { fileToUpload = await dataUrlToFile(uploadedImageUrl, uploadedFile.name) } catch {}
-      }
-      try { fileToUpload = await normalizeImageOrientation(fileToUpload) } catch {}
-      const imageUrl = await uploadInputImage(fileToUpload, user.id)
+      // uploadedFile is already the downscaled, re-encoded in-memory JPEG produced
+      // at selection time — the same canvas output as the preview. No content://
+      // handle and no full-res re-encode here.
+      const imageUrl = await uploadInputImage(uploadedFile, user.id)
       setLoadingProgress(10)
 
         // Stage 2: Submit job to API
@@ -462,7 +447,7 @@ function AppContent() {
           <button
             className="generate-btn-enhanced"
             onClick={generateVideo}
-            disabled={isLoading || !uploadedFile}
+            disabled={isLoading || !uploadedImageUrl}
           >
             {isLoading ? (
               <><span className="spinner" /><span className="btn-text">Generating Video...</span></>
