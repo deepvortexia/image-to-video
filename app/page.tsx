@@ -392,7 +392,19 @@ function AppContent() {
                   src={uploadedImageUrl}
                   alt="Uploaded"
                   className="upload-preview-img"
-                  onError={() => setToast({ title: 'Preview Error', message: 'Could not display the image. Please try a different photo.', type: 'error' })}
+                  onError={(e) => {
+                    // Android Blink emits a spurious `error` on large data: URLs even
+                    // when the image decodes and displays fine. Don't trust the event —
+                    // trust the element: a genuinely broken image ends with
+                    // complete === true && naturalWidth === 0. Re-check after a beat so a
+                    // valid-but-slow decode isn't misreported as a failure.
+                    const img = e.currentTarget
+                    window.setTimeout(() => {
+                      if (img.complete && img.naturalWidth === 0) {
+                        setToast({ title: 'Preview Error', message: 'Could not display the image. Please try a different photo.', type: 'error' })
+                      }
+                    }, 1500)
+                  }}
                 />
                 <button className="upload-change-btn" onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click() }}>
                   Change Image
