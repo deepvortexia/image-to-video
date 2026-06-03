@@ -82,6 +82,7 @@ function AppContent() {
   }, [user])
 
   const handleFileSelect = (file: File) => {
+    alert('File received: ' + file.name + ' | type: [' + file.type + '] | size: ' + file.size)
     const mime = file.type || ''
     const ext = file.name.split('.').pop()?.toLowerCase() || ''
     const validType = /^image\/(jpeg|jpg|png|webp)$/.test(mime) || ['jpg','jpeg','png','webp'].includes(ext)
