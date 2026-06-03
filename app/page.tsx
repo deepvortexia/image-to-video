@@ -91,9 +91,50 @@ function AppContent() {
       return
     }
     setResultVideo('')
-    setUploadedFile(file)
-    if (uploadedImageUrl) URL.revokeObjectURL(uploadedImageUrl)
-    setUploadedImageUrl(URL.createObjectURL(file))
+
+    const fail = () => {
+      setToast({ title: 'Preview Error', message: 'Could not load image preview. Please try again.', type: 'error' })
+    }
+
+    // Decode the picked image once, downscale to <=1920px on the longest side, and
+    // re-encode to a clean in-memory JPEG. That single canvas output is the source
+    // of truth for both the preview and the upload bytes — so a full-res phone photo
+    // can't blow Blink's decode budget on Android (where createObjectURL previews
+    // randomly failed). FileReader pulls the bytes into memory first so the <img>
+    // decode that feeds the canvas never lazily dereferences a content:// handle.
+    const reader = new FileReader()
+    reader.onload = () => {
+      if (typeof reader.result !== 'string') { fail(); return }
+      const img = new Image()
+      img.onload = () => {
+        const longest = Math.max(img.naturalWidth, img.naturalHeight)
+        const scale = Math.min(1, 1920 / longest)
+        const w = Math.max(1, Math.round(img.naturalWidth * scale))
+        const h = Math.max(1, Math.round(img.naturalHeight * scale))
+        const canvas = document.createElement('canvas')
+        canvas.width = w
+        canvas.height = h
+        const ctx = canvas.getContext('2d')
+        if (!ctx) { fail(); return }
+        ctx.drawImage(img, 0, 0, w, h)
+        canvas.toBlob(
+          blob => {
+            if (!blob) { fail(); return }
+            const baseName = file.name.replace(/\.[^.]+$/, '') || 'image'
+            // Commit the File and the preview together so Generate (gated on
+            // uploadedFile) can't run against a half-processed image.
+            setUploadedFile(new File([blob], `${baseName}.jpg`, { type: 'image/jpeg' }))
+            setUploadedImageUrl(canvas.toDataURL('image/jpeg', 0.92))
+          },
+          'image/jpeg',
+          0.92
+        )
+      }
+      img.onerror = () => fail()
+      img.src = reader.result
+    }
+    reader.onerror = () => fail()
+    reader.readAsDataURL(file)
   }
 
   const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
