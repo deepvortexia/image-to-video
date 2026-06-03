@@ -96,7 +96,12 @@ function AppContent() {
     setResultVideo('')
     setUploadedFile(file)
     if (uploadedImageUrl) URL.revokeObjectURL(uploadedImageUrl)
-    setUploadedImageUrl(URL.createObjectURL(file))
+    const newUrl = URL.createObjectURL(file)
+    if (!newUrl) {
+      setToast({ title: 'Preview Error', message: 'Could not load image preview. Please try again.', type: 'error' })
+      return
+    }
+    setUploadedImageUrl(newUrl)
   }
 
   const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
