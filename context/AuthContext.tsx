@@ -15,8 +15,6 @@ interface AuthContextType {
   signOut: () => Promise<void>
   refreshProfile: () => Promise<void>
   refreshSession: () => Promise<void>
-  getAccessToken: () => Promise<string | null>
-  ensureProfileLoaded: () => Promise<Profile | null>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -122,9 +120,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setLoading(false)
         } else if (event === 'TOKEN_REFRESHED' && currentSession) {
           setSession(currentSession)
-          // A refresh is also a good moment to recover from an earlier profile-load
-          // miss that left profile null (otherwise credits read as 0 until reload).
-          setTimeout(() => loadProfile(currentSession.user), 0)
         }
       }
     )
@@ -188,20 +183,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         },
         refreshSession: async () => {
           await supabase.auth.refreshSession()
-        },
-        getAccessToken: async () => {
-          // Read the token from the SDK's source of truth (storage + auto-refresh),
-          // not the React `session` state, which can still be null while the session
-          // is restoring on mobile. getSession() refreshes the token if expired.
-          const { data } = await supabase.auth.getSession()
-          return data.session?.access_token ?? null
-        },
-        ensureProfileLoaded: async () => {
-          if (profile) return profile
-          if (!user) return null
-          const loaded = await ensureProfile(user)
-          if (loaded) setProfile(loaded)
-          return loaded
         },
       }}
     >

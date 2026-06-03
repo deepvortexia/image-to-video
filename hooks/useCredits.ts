@@ -2,7 +2,7 @@
 import { useAuth } from '../context/AuthContext'
 
 export const useCredits = () => {
-  const { profile, refreshProfile, ensureProfileLoaded } = useAuth()
+  const { profile, refreshProfile } = useAuth()
 
   const hasCredits = (required = 1) => {
     return profile != null && profile.credits >= required
@@ -10,19 +10,6 @@ export const useCredits = () => {
 
   const getCredits = () => {
     return profile?.credits || 0
-  }
-
-  // Async so a not-yet-loaded profile doesn't read as "no credits". If profile is
-  // null (slow/blocked storage on mobile), load it and retry a few times before
-  // concluding the user is actually out of credits.
-  const hasEnoughCredits = async (n: number): Promise<boolean> => {
-    if (profile != null) return profile.credits >= n
-    for (let attempt = 0; attempt < 3; attempt++) {
-      const loaded = await ensureProfileLoaded()
-      if (loaded != null) return loaded.credits >= n
-      await new Promise(resolve => setTimeout(resolve, 400))
-    }
-    return false
   }
 
   const deductCredit = async () => {
@@ -42,7 +29,7 @@ export const useCredits = () => {
   return {
     credits: getCredits(),
     hasCredits: hasCredits(),
-    hasEnoughCredits,
+    hasEnoughCredits: (n: number) => hasCredits(n),
     deductCredit,
     refreshProfile,
   }

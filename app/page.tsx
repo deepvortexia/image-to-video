@@ -10,7 +10,6 @@ import { supabase } from '../lib/supabase'
 import { VideoGallery } from '../components/VideoGallery'
 
 const COST_CREDITS = 2
-const MAX_IMAGE_DIMENSION = 1920
 const CREDIT_REFRESH_ERROR = 'Payment successful, but there was a temporary issue syncing your credits. Please refresh the page to see your updated balance.'
 const PENDING_STRIPE_SESSION_KEY = 'pending_stripe_session'
 
@@ -35,7 +34,7 @@ function AppContent() {
   const [loadingProgress, setLoadingProgress] = useState(0)
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
 
-  const { user, session, loading, getAccessToken } = useAuth()
+  const { user, session, loading } = useAuth()
   const { hasEnoughCredits, refreshProfile } = useCredits()
 
   const processedSessionIdRef = useRef<string | null>(null)
@@ -82,79 +81,25 @@ function AppContent() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user])
 
-  const clearFileInput = () => {
-    if (fileInputRef.current) fileInputRef.current.value = ''
-  }
-
   const handleFileSelect = (file: File) => {
-    const mime = file.type || ''
-    const ext = file.name.split('.').pop()?.toLowerCase() || ''
-    const validType = /^image\/(jpeg|jpg|png|webp)$/.test(mime) || ['jpg','jpeg','png','webp'].includes(ext)
-    if (!validType) {
+    if (!file.type.match(/^image\/(jpeg|png|webp)$/)) {
       setToast({ title: 'Invalid File', message: 'Please upload a JPG, PNG, or WEBP image.', type: 'error' })
-      clearFileInput()
       return
     }
     if (file.size > 10 * 1024 * 1024) {
       setToast({ title: 'File Too Large', message: 'Maximum file size is 10MB.', type: 'error' })
-      clearFileInput()
       return
     }
     setResultVideo('')
-
-    const fail = () => {
-      setToast({ title: 'Preview Error', message: 'Could not load image preview. Please try again.', type: 'error' })
-      clearFileInput()
-    }
-
-    // Decode the picked image once, downscale it to a sane bound, and re-encode to
-    // a clean in-memory JPEG. That single canvas output is the source of truth for
-    // BOTH the preview and the upload bytes — so neither depends on the original
-    // Android content:// handle, and a full-res phone photo can't blow Blink's
-    // decode budget on a memory-constrained device (the residual random failures).
-    // FileReader pulls the bytes into memory first so the <img> decode that feeds
-    // the canvas never lazily dereferences the content:// provider.
-    const reader = new FileReader()
-    reader.onload = () => {
-      if (typeof reader.result !== 'string') { fail(); return }
-      const img = new Image()
-      img.onload = () => {
-        const longest = Math.max(img.naturalWidth, img.naturalHeight)
-        const scale = Math.min(1, MAX_IMAGE_DIMENSION / longest)
-        const w = Math.max(1, Math.round(img.naturalWidth * scale))
-        const h = Math.max(1, Math.round(img.naturalHeight * scale))
-        const canvas = document.createElement('canvas')
-        canvas.width = w
-        canvas.height = h
-        const ctx = canvas.getContext('2d')
-        if (!ctx) { fail(); return }
-        ctx.drawImage(img, 0, 0, w, h)
-        canvas.toBlob(
-          blob => {
-            if (!blob) { fail(); return }
-            const baseName = file.name.replace(/\.[^.]+$/, '') || 'image'
-            // Commit the File and the preview together so Generate can never run
-            // against a half-processed image (the earlier Generate-before-read race).
-            setUploadedFile(new File([blob], `${baseName}.jpg`, { type: 'image/jpeg' }))
-            setUploadedImageUrl(canvas.toDataURL('image/jpeg', 0.92))
-            clearFileInput()
-          },
-          'image/jpeg',
-          0.92
-        )
-      }
-      img.onerror = () => fail()
-      img.src = reader.result
-    }
-    reader.onerror = () => fail()
-    reader.readAsDataURL(file)
+    setUploadedFile(file)
+    if (uploadedImageUrl) URL.revokeObjectURL(uploadedImageUrl)
+    setUploadedImageUrl(URL.createObjectURL(file))
   }
 
   const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) handleFileSelect(file)
-    // Do NOT reset e.target.value here — handleFileSelect clears it once the
-    // FileReader finishes, so Android can't invalidate the file source mid-read.
+    e.target.value = ''
   }
 
   const handleDrop = (e: React.DragEvent) => {
@@ -167,12 +112,9 @@ function AppContent() {
   const uploadInputImage = async (file: File, userId: string): Promise<string> => {
     const ext = file.name.split('.').pop() || 'jpg'
     const fileName = `${userId}/${Date.now()}-input.${ext}`
-    const mimeFromExt: Record<string,string> = { jpg:'image/jpeg', jpeg:'image/jpeg', png:'image/png', webp:'image/webp' }
-    const ext2 = file.name.split('.').pop()?.toLowerCase() || ''
-    const safeContentType = file.type || mimeFromExt[ext2] || 'image/jpeg'
     const { error } = await supabase.storage
       .from('video-inputs')
-      .upload(fileName, file, { contentType: safeContentType, upsert: false })
+      .upload(fileName, file, { contentType: file.type, upsert: false })
     if (error) throw new Error(`Upload failed: ${error.message}`)
     const { data: { publicUrl } } = supabase.storage.from('video-inputs').getPublicUrl(fileName)
     return publicUrl
@@ -187,7 +129,7 @@ function AppContent() {
       setIsAuthModalOpen(true)
       return
     }
-    if (!(await hasEnoughCredits(COST_CREDITS))) {
+    if (!hasEnoughCredits(COST_CREDITS)) {
       setToast({ title: 'Insufficient Credits', message: `Video generation costs ${COST_CREDITS} credits. Please purchase more.`, type: 'warning' })
       setIsPricingModalOpen(true)
       return
@@ -209,26 +151,15 @@ function AppContent() {
     elapsedIntervalRef.current = setInterval(() => setElapsedSeconds(s => s + 1), 1000)
 
     try {
-      // Get a valid access token before doing any work. On mobile the session may
-      // still be restoring, so read it from the SDK source of truth (refreshing if
-      // expired) rather than the possibly-stale `session` state — otherwise the
-      // request goes out as `Bearer undefined` and 401s.
-      const token = await getAccessToken()
-      if (!token) {
-        setToast({ title: 'Session Expired', message: 'Please refresh and sign in again. No credits were deducted.', type: 'error' })
-        return
-      }
-
       // Stage 1: Upload image (0 → 10%)
       setLoadingProgress(4)
-      // uploadedFile is already the downscaled, re-encoded in-memory JPEG produced
-      // at selection time — the same canvas output as the preview. No content://
-      // handle and no full-res re-encode here.
       const imageUrl = await uploadInputImage(uploadedFile, user.id)
       setLoadingProgress(10)
 
         // Stage 2: Submit job to API
       setLoadingStage(2)
+
+      const token = session?.access_token
 
       const postRes = await fetch('/api/generate-video', {
         method: 'POST',
@@ -347,6 +278,7 @@ function AppContent() {
   const resetAll = () => {
     setResultVideo('')
     setUploadedFile(null)
+    if (uploadedImageUrl) URL.revokeObjectURL(uploadedImageUrl)
     setUploadedImageUrl('')
     setMotionPrompt('')
     setFavSaved(false)
@@ -398,24 +330,7 @@ function AppContent() {
             {uploadedImageUrl ? (
               <div className="upload-zone-preview">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={uploadedImageUrl}
-                  alt="Uploaded"
-                  className="upload-preview-img"
-                  onError={(e) => {
-                    // Android Blink emits a spurious `error` on large data: URLs even
-                    // when the image decodes and displays fine. Don't trust the event —
-                    // trust the element: a genuinely broken image ends with
-                    // complete === true && naturalWidth === 0. Re-check after a beat so a
-                    // valid-but-slow decode isn't misreported as a failure.
-                    const img = e.currentTarget
-                    window.setTimeout(() => {
-                      if (img.complete && img.naturalWidth === 0) {
-                        setToast({ title: 'Preview Error', message: 'Could not display the image. Please try a different photo.', type: 'error' })
-                      }
-                    }, 1500)
-                  }}
-                />
+                <img src={uploadedImageUrl} alt="Uploaded" className="upload-preview-img" />
                 <button className="upload-change-btn" onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click() }}>
                   Change Image
                 </button>
@@ -432,9 +347,9 @@ function AppContent() {
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/*"
+            accept="image/jpeg,image/png,image/webp"
             onChange={handleFileInputChange}
-            style={{ opacity: 0, position: 'absolute', width: '1px', height: '1px', overflow: 'hidden' }}
+            style={{ display: 'none' }}
           />
 
           <div className="extra-inputs">
@@ -455,7 +370,7 @@ function AppContent() {
           <button
             className="generate-btn-enhanced"
             onClick={generateVideo}
-            disabled={isLoading || !uploadedImageUrl}
+            disabled={isLoading || !uploadedFile}
           >
             {isLoading ? (
               <><span className="spinner" /><span className="btn-text">Generating Video...</span></>

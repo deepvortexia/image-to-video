@@ -58,17 +58,13 @@ const removeChunkedCookie = (key: string): void => {
 // Chunked cookie storage with sessionStorage backup for PKCE code verifier.
 const customCookieStorage = {
   getItem: (key: string): string | null => {
-    // Prefer the cross-subdomain cookie for everything, including the PKCE code
-    // verifier: the cookie survives the OAuth redirect and the mobile Custom-Tab
-    // hand-off, whereas sessionStorage does not — and a stale verifier left in
-    // sessionStorage from an abandoned attempt must not shadow the fresh cookie.
-    // sessionStorage is only a same-tab fallback when the cookie is unavailable.
-    const cookieVal = getChunkedCookie(key)
-    if (cookieVal) return cookieVal
     if (key.includes('code-verifier')) {
-      try { return sessionStorage.getItem(key) } catch {}
+      try {
+        const ss = sessionStorage.getItem(key)
+        if (ss) return ss
+      } catch {}
     }
-    return null
+    return getChunkedCookie(key)
   },
   setItem: (key: string, value: string): void => {
     if (key.includes('code-verifier')) {
@@ -89,7 +85,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: true,
-    flowType: 'pkce',
+    flowType: 'implicit',
     storageKey: 'deepvortex-auth',
     storage: customCookieStorage,
   },
