@@ -193,7 +193,12 @@ function AppContent() {
       // Stage 1: Upload image (0 → 10%)
       setLoadingProgress(4)
       let fileToUpload = uploadedFile
-      try { fileToUpload = await normalizeImageOrientation(uploadedFile) } catch {}
+      try {
+        fileToUpload = await normalizeImageOrientation(uploadedFile)
+        alert('Normalized OK - name:' + fileToUpload.name + ' type:' + fileToUpload.type + ' size:' + fileToUpload.size)
+      } catch(e) {
+        alert('Normalize FAILED: ' + e)
+      }
       const imageUrl = await uploadInputImage(fileToUpload, user.id)
       setLoadingProgress(10)
 
