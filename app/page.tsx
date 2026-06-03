@@ -150,6 +150,15 @@ function AppContent() {
     return publicUrl
   }
 
+  // Rebuild a real File from the in-memory preview data URL. fetch() decodes the
+  // base64 into a Blob whose bytes live in the page, with no dependency on the
+  // Android content:// handle that the original picked File wraps.
+  const dataUrlToFile = async (dataUrl: string, fileName: string): Promise<File> => {
+    const res = await fetch(dataUrl)
+    const blob = await res.blob()
+    return new File([blob], fileName, { type: blob.type || 'image/jpeg' })
+  }
+
   const normalizeImageOrientation = (file: File): Promise<File> =>
     new Promise((resolve) => {
       const img = new Image()
@@ -210,8 +219,16 @@ function AppContent() {
     try {
       // Stage 1: Upload image (0 → 10%)
       setLoadingProgress(4)
+      // Upload from the in-memory preview bytes, not the original File from state.
+      // On Android the original File is only a handle over the picker's content://
+      // provider, which can be stale by the time the user taps Generate — causing
+      // silent upload failures. The data URL already holds the bytes in memory, so
+      // rebuilding from it (and normalizing that copy) never touches the provider.
       let fileToUpload = uploadedFile
-      try { fileToUpload = await normalizeImageOrientation(uploadedFile) } catch {}
+      if (uploadedImageUrl.startsWith('data:')) {
+        try { fileToUpload = await dataUrlToFile(uploadedImageUrl, uploadedFile.name) } catch {}
+      }
+      try { fileToUpload = await normalizeImageOrientation(fileToUpload) } catch {}
       const imageUrl = await uploadInputImage(fileToUpload, user.id)
       setLoadingProgress(10)
 
