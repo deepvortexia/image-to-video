@@ -92,7 +92,15 @@ function AppContent() {
     }
     setResultVideo('')
 
-    const fail = () => {
+    const fail = (useFallback = true) => {
+      if (useFallback) {
+        const fallbackUrl = URL.createObjectURL(file)
+        if (fallbackUrl) {
+          setUploadedFile(file)
+          setUploadedImageUrl(fallbackUrl)
+          return
+        }
+      }
       setToast({ title: 'Preview Error', message: 'Could not load image preview. Please try again.', type: 'error' })
     }
 
