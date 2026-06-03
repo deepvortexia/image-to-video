@@ -104,7 +104,7 @@ function AppContent() {
       setToast({ title: 'Preview Error', message: 'Could not load image preview. Please try again.', type: 'error' })
     }
 
-    // Decode the picked image once, downscale to <=1920px on the longest side, and
+    // Decode the picked image once, downscale to <=800px on the longest side, and
     // re-encode to a clean in-memory JPEG. That single canvas output is the source
     // of truth for both the preview and the upload bytes — so a full-res phone photo
     // can't blow Blink's decode budget on Android (where createObjectURL previews
@@ -116,7 +116,7 @@ function AppContent() {
       const img = new Image()
       img.onload = () => {
         const longest = Math.max(img.naturalWidth, img.naturalHeight)
-        const scale = Math.min(1, 1920 / longest)
+        const scale = Math.min(1, 800 / longest)
         const w = Math.max(1, Math.round(img.naturalWidth * scale))
         const h = Math.max(1, Math.round(img.naturalHeight * scale))
         const canvas = document.createElement('canvas')
