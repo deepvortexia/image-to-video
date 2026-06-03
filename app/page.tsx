@@ -128,10 +128,10 @@ function AppContent() {
         canvas.toBlob(
           blob => {
             if (!blob) { fail(); return }
-            const baseName = file.name.replace(/\.[^.]+$/, '') || 'image'
             // Commit the File and the preview together so Generate (gated on
-            // uploadedFile) can't run against a half-processed image.
-            setUploadedFile(new File([blob], `${baseName}.jpg`, { type: 'image/jpeg' }))
+            // uploadedFile) can't run against a half-processed image. Preview uses
+            // the 800px canvas for display; upload keeps the original full-res file.
+            setUploadedFile(file)
             setUploadedImageUrl(canvas.toDataURL('image/jpeg', 0.92))
           },
           'image/jpeg',
