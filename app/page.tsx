@@ -82,7 +82,6 @@ function AppContent() {
   }, [user])
 
   const handleFileSelect = (file: File) => {
-    alert('File received: ' + file.name + ' | type: [' + file.type + '] | size: ' + file.size)
     const mime = file.type || ''
     const ext = file.name.split('.').pop()?.toLowerCase() || ''
     const validType = /^image\/(jpeg|jpg|png|webp)$/.test(mime) || ['jpg','jpeg','png','webp'].includes(ext)
@@ -193,12 +192,7 @@ function AppContent() {
       // Stage 1: Upload image (0 → 10%)
       setLoadingProgress(4)
       let fileToUpload = uploadedFile
-      try {
-        fileToUpload = await normalizeImageOrientation(uploadedFile)
-        alert('Normalized OK - name:' + fileToUpload.name + ' type:' + fileToUpload.type + ' size:' + fileToUpload.size)
-      } catch(e) {
-        alert('Normalize FAILED: ' + e)
-      }
+      try { fileToUpload = await normalizeImageOrientation(uploadedFile) } catch {}
       const imageUrl = await uploadInputImage(fileToUpload, user.id)
       setLoadingProgress(10)
 
@@ -376,13 +370,7 @@ function AppContent() {
             {uploadedImageUrl ? (
               <div className="upload-zone-preview">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={uploadedImageUrl}
-                  alt="Uploaded"
-                  className="upload-preview-img"
-                  onLoad={() => alert('Image loaded OK')}
-                  onError={(e) => alert('Image FAILED to load - src: ' + (e.target as HTMLImageElement).src)}
-                />
+                <img src={uploadedImageUrl} alt="Uploaded" className="upload-preview-img" />
                 <button className="upload-change-btn" onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click() }}>
                   Change Image
                 </button>
