@@ -35,7 +35,7 @@ function AppContent() {
   const [loadingProgress, setLoadingProgress] = useState(0)
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
 
-  const { user, session, loading } = useAuth()
+  const { user, session, loading, getAccessToken } = useAuth()
   const { hasEnoughCredits, refreshProfile } = useCredits()
 
   const processedSessionIdRef = useRef<string | null>(null)
@@ -187,7 +187,7 @@ function AppContent() {
       setIsAuthModalOpen(true)
       return
     }
-    if (!hasEnoughCredits(COST_CREDITS)) {
+    if (!(await hasEnoughCredits(COST_CREDITS))) {
       setToast({ title: 'Insufficient Credits', message: `Video generation costs ${COST_CREDITS} credits. Please purchase more.`, type: 'warning' })
       setIsPricingModalOpen(true)
       return
@@ -209,6 +209,16 @@ function AppContent() {
     elapsedIntervalRef.current = setInterval(() => setElapsedSeconds(s => s + 1), 1000)
 
     try {
+      // Get a valid access token before doing any work. On mobile the session may
+      // still be restoring, so read it from the SDK source of truth (refreshing if
+      // expired) rather than the possibly-stale `session` state — otherwise the
+      // request goes out as `Bearer undefined` and 401s.
+      const token = await getAccessToken()
+      if (!token) {
+        setToast({ title: 'Session Expired', message: 'Please refresh and sign in again. No credits were deducted.', type: 'error' })
+        return
+      }
+
       // Stage 1: Upload image (0 → 10%)
       setLoadingProgress(4)
       // uploadedFile is already the downscaled, re-encoded in-memory JPEG produced
@@ -219,8 +229,6 @@ function AppContent() {
 
         // Stage 2: Submit job to API
       setLoadingStage(2)
-
-      const token = session?.access_token
 
       const postRes = await fetch('/api/generate-video', {
         method: 'POST',
