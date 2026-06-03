@@ -81,31 +81,52 @@ function AppContent() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user])
 
+  const clearFileInput = () => {
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
   const handleFileSelect = (file: File) => {
     const mime = file.type || ''
     const ext = file.name.split('.').pop()?.toLowerCase() || ''
     const validType = /^image\/(jpeg|jpg|png|webp)$/.test(mime) || ['jpg','jpeg','png','webp'].includes(ext)
     if (!validType) {
       setToast({ title: 'Invalid File', message: 'Please upload a JPG, PNG, or WEBP image.', type: 'error' })
+      clearFileInput()
       return
     }
     if (file.size > 10 * 1024 * 1024) {
       setToast({ title: 'File Too Large', message: 'Maximum file size is 10MB.', type: 'error' })
+      clearFileInput()
       return
     }
     setResultVideo('')
     setUploadedFile(file)
-    const newUrl = URL.createObjectURL(file)
-    setUploadedImageUrl(prev => {
-      if (prev) setTimeout(() => URL.revokeObjectURL(prev), 10000)
-      return newUrl
-    })
+    // Render the preview from a self-contained data URL rather than a blob: URL.
+    // On Android Chrome/Firefox the File returned by the photo picker is backed
+    // lazily by a content:// provider; a blob: URL from createObjectURL only reads
+    // those bytes when the <img> decodes — after React paints — and intermittently
+    // fails when the provider is reclaimed in that window (the random preview loss).
+    // FileReader pulls the full bytes into memory now, so the <img> src no longer
+    // depends on the provider still being alive at paint time.
+    const reader = new FileReader()
+    reader.onload = () => {
+      if (typeof reader.result === 'string') setUploadedImageUrl(reader.result)
+      // Clear only after the read completes — resetting the input earlier can make
+      // Android release the content:// source mid-read and corrupt the preview.
+      clearFileInput()
+    }
+    reader.onerror = () => {
+      setToast({ title: 'Preview Error', message: 'Could not load image preview. Please try again.', type: 'error' })
+      clearFileInput()
+    }
+    reader.readAsDataURL(file)
   }
 
   const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) handleFileSelect(file)
-    e.target.value = ''
+    // Do NOT reset e.target.value here — handleFileSelect clears it once the
+    // FileReader finishes, so Android can't invalidate the file source mid-read.
   }
 
   const handleDrop = (e: React.DragEvent) => {
@@ -316,9 +337,7 @@ function AppContent() {
   const resetAll = () => {
     setResultVideo('')
     setUploadedFile(null)
-    const urlToRevoke = uploadedImageUrl
     setUploadedImageUrl('')
-    if (urlToRevoke) setTimeout(() => URL.revokeObjectURL(urlToRevoke), 10000)
     setMotionPrompt('')
     setFavSaved(false)
   }
@@ -373,8 +392,7 @@ function AppContent() {
                   src={uploadedImageUrl}
                   alt="Uploaded"
                   className="upload-preview-img"
-                  onLoad={() => {}}
-                  onError={() => {}}
+                  onError={() => setToast({ title: 'Preview Error', message: 'Could not display the image. Please try a different photo.', type: 'error' })}
                 />
                 <button className="upload-change-btn" onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click() }}>
                   Change Image
@@ -392,7 +410,7 @@ function AppContent() {
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/jpeg,image/png,image/webp"
+            accept="image/*"
             onChange={handleFileInputChange}
             style={{ opacity: 0, position: 'absolute', width: '1px', height: '1px', overflow: 'hidden' }}
           />
