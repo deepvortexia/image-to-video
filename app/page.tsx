@@ -376,7 +376,13 @@ function AppContent() {
             {uploadedImageUrl ? (
               <div className="upload-zone-preview">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={uploadedImageUrl} alt="Uploaded" className="upload-preview-img" />
+                <img
+                  src={uploadedImageUrl}
+                  alt="Uploaded"
+                  className="upload-preview-img"
+                  onLoad={() => alert('Image loaded OK')}
+                  onError={(e) => alert('Image FAILED to load - src: ' + (e.target as HTMLImageElement).src)}
+                />
                 <button className="upload-change-btn" onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click() }}>
                   Change Image
                 </button>
