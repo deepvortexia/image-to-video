@@ -95,13 +95,11 @@ function AppContent() {
     }
     setResultVideo('')
     setUploadedFile(file)
-    if (uploadedImageUrl) URL.revokeObjectURL(uploadedImageUrl)
     const newUrl = URL.createObjectURL(file)
-    if (!newUrl) {
-      setToast({ title: 'Preview Error', message: 'Could not load image preview. Please try again.', type: 'error' })
-      return
-    }
-    setUploadedImageUrl(newUrl)
+    setUploadedImageUrl(prev => {
+      if (prev) setTimeout(() => URL.revokeObjectURL(prev), 10000)
+      return newUrl
+    })
   }
 
   const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -318,8 +316,9 @@ function AppContent() {
   const resetAll = () => {
     setResultVideo('')
     setUploadedFile(null)
-    if (uploadedImageUrl) URL.revokeObjectURL(uploadedImageUrl)
+    const urlToRevoke = uploadedImageUrl
     setUploadedImageUrl('')
+    if (urlToRevoke) setTimeout(() => URL.revokeObjectURL(urlToRevoke), 10000)
     setMotionPrompt('')
     setFavSaved(false)
   }
