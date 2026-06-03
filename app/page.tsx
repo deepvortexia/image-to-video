@@ -133,12 +133,16 @@ function AppContent() {
 
   const normalizeImageOrientation = (file: File): Promise<File> =>
     new Promise((resolve) => {
-      createImageBitmap(file).then(bitmap => {
+      const img = new Image()
+      const objectUrl = URL.createObjectURL(file)
+      img.onload = () => {
+        URL.revokeObjectURL(objectUrl)
         const canvas = document.createElement('canvas')
-        canvas.width = bitmap.width
-        canvas.height = bitmap.height
-        canvas.getContext('2d')!.drawImage(bitmap, 0, 0)
-        bitmap.close()
+        canvas.width = img.naturalWidth
+        canvas.height = img.naturalHeight
+        const ctx = canvas.getContext('2d')
+        if (!ctx) { resolve(file); return }
+        ctx.drawImage(img, 0, 0)
         canvas.toBlob(
           blob => blob
             ? resolve(new File([blob], file.name, { type: 'image/jpeg' }))
@@ -146,7 +150,12 @@ function AppContent() {
           'image/jpeg',
           0.92
         )
-      }).catch(() => resolve(file))
+      }
+      img.onerror = () => {
+        URL.revokeObjectURL(objectUrl)
+        resolve(file)
+      }
+      img.src = objectUrl
     })
 
   const generateVideo = async () => {
