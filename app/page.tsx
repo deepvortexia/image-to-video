@@ -82,7 +82,12 @@ function AppContent() {
   }, [user])
 
   const handleFileSelect = (file: File) => {
-    if (!file.type.match(/^image\/(jpeg|png|webp)$/)) {
+    // Android pickers often report an empty or generic MIME type for gallery
+    // images (content:// URIs), so fall back to the file extension before rejecting.
+    const okType = /^image\/(jpeg|jpg|png|webp)$/.test(file.type)
+    const genericType = !file.type || file.type === 'application/octet-stream'
+    const okExt = /\.(jpe?g|png|webp)$/i.test(file.name)
+    if (!okType && !(genericType && okExt)) {
       setToast({ title: 'Invalid File', message: 'Please upload a JPG, PNG, or WEBP image.', type: 'error' })
       return
     }
@@ -159,11 +164,18 @@ function AppContent() {
   }
 
   const uploadInputImage = async (file: File, userId: string): Promise<string> => {
-    const ext = file.name.split('.').pop() || 'jpg'
+    // Android picks can lack both an extension and a MIME type; derive each
+    // from the other (defaulting to jpg) so Supabase never gets junk values.
+    const MIME_BY_EXT: Record<string, string> = {
+      jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp',
+    }
+    const extFromName = file.name.match(/\.(jpe?g|png|webp)$/i)?.[1]?.toLowerCase()
+    const extFromType = Object.keys(MIME_BY_EXT).find(k => MIME_BY_EXT[k] === file.type)
+    const ext = extFromName || extFromType || 'jpg'
     const fileName = `${userId}/${Date.now()}-input.${ext}`
     const { error } = await supabase.storage
       .from('video-inputs')
-      .upload(fileName, file, { contentType: file.type, upsert: false })
+      .upload(fileName, file, { contentType: file.type || MIME_BY_EXT[ext], upsert: false })
     if (error) throw new Error(`Upload failed: ${error.message}`)
     const { data: { publicUrl } } = supabase.storage.from('video-inputs').getPublicUrl(fileName)
     return publicUrl
@@ -396,7 +408,7 @@ function AppContent() {
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/jpeg,image/png,image/webp"
+            accept="image/*"
             onChange={handleFileInputChange}
             style={{ display: 'none' }}
           />
